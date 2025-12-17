@@ -1,0 +1,40 @@
+menu "Wifi Manager"
+
+    config WIFI_SSID
+        string "WiFi SSID"
+        default "Unknown"
+        help
+            SSID (network name) for the example to connect to.
+
+    config WIFI_PASS
+        string "WiFi Password"
+        default "12345789"
+        help
+            WiFi password (WPA or WPA2) for the example to use.
+
+    config MAX_RETRY
+        int "Maximum retry"
+        default 5
+        help
+            Set the Maximum retry to avoid station reconnecting to the AP unlimited when the AP is really inexistent.
+
+    config AP_SSID
+        string "AP_SSID"
+        default "Environment Monitor Device"
+        help 
+            AP SSID
+
+    config AP_PASSWORD
+        string "AP_PASSWORD"
+        default ""
+        help
+            AP_PASSWORD
+    
+    config AP_CHANNEL
+        int "AP_CHANNEL"
+        default 1
+        help
+            AP_CHANNEL
+
+
+endmenu

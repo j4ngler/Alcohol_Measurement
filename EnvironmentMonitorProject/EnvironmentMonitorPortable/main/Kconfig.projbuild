@@ -1,0 +1,20 @@
+menu "Project Configuration"
+
+    config WS_URL
+        string "URL WebSocket"
+        default "ws://localhost:8080" 
+        help 
+            Set the URL of WS Servers
+    
+    config HOST_IP_ADDR 
+        string "IP Host"
+        default "192.168.1.100"
+        help
+            Config ip host
+
+    config HTTP_PORT
+        int "Port HTTP"
+        default 5500
+        help
+            Config port http
+endmenu

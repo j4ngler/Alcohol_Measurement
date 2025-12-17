@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Environment Monitor Dashboard</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link href='https://fonts.googleapis.com/css?family=Roboto' rel='stylesheet' type='text/css'>
+  <link href='https://fonts.googleapis.com/css?family=Noto+Sans' rel='stylesheet' type='text/css'>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <!-- Flatpickr month select plugin -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/index.js"></script>
+
+  <!-- Flatpickr CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <!-- Flatpickr JS -->
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <link href="/style.css" rel="stylesheet" />
+
+</head>
+
+<body>
+  <div class="container">
+    <div class="main-content">
+      <div class="nav">
+        <div>
+          <a class="active" href="#"> HOME </a>
+          <div id="weather-container">
+            <div class="weather-icon">
+              <img src="/imgs/images__9_-removebg-preview.png" alt="icon" />
+            </div>
+            <p id="location"></p>
+            <img id="temperature-icon"
+              src="/imgs/depositphotos_211950946-stock-illustration-flame-logo-fire-icon-fire-removebg-preview.png"
+              alt="Temperature">
+            <p id="temperature">
+              <span id="temperature-value"></span>
+            </p>
+            <img id="wind-icon" src="/imgs/cool-wind-800px-removebg-preview.png" alt="Wind">
+            <p id="wind">
+              <span id="wind-value"></span>
+            </p>
+          </div>
+          <!-- <img id="Icon_Loading" src="/imgs/9PrD.gif" alt="icon" /> -->
+        </div>
+
+        <div>
+          <div class="fota-btn">FOTA</div>
+        </div>
+      </div>
+    </div>
+    <!-- Data Widget -->
+    <div class="widgets">
+      <div class="widget data-widget">
+        <div class="title-dataWidget">Data Monitor</div>
+        <div class="subtitle-dataWidget">Real-time Data</div>
+        <div class="Row_1_dataWidget">
+          <div class="card card_temperature">
+            <div class="label" style="margin-top: 3px;"><i class="fas fa-thermometer-half"
+                style="font-size: 20px; margin-right: 8px;"></i>Temperature</div>
+            <div id="container_temperature" style="stroke: #fafafabd;"></div>
+          </div>
+          <div class="card card_humidity">
+            <div class="label" style="margin-top: 3px"><i class="fas fa-tint"
+                style="font-size: 20px; margin-right: 10px;"></i>Humidity</div>
+            <div id="container_humidity" style="stroke: #fafafabd;"></div>
+          </div>
+        </div>
+        <div class="Row_2_dataWidget">
+          <div class="card card_pressure">
+            <div class="label" style="margin-top: 3px"><i class="fas fa-compress-arrows-alt"
+                style="font-size: 30px; margin-right: 8px;"></i>Pressure</div>
+            <div id="container_pressure" style="stroke: #fafafabd;"></div>
+          </div>
+          <div class="card card_pm1">
+            <div class="label" style="margin-top: 3px"><i class="fas fa-wind"
+                style="font-size: 30px; margin-right: 8px;"></i>PM1.0</div>
+            <div id="container_pm1" style="stroke: #fafafabd;"></div>
+          </div>
+        </div>
+        <div class="Row_3_dataWidget">
+          <div class="card card_pm25">
+            <div class="label" style="margin-top: 3px"><i class="fas fa-wind"
+                style="font-size: 30px; margin-right: 8px;"></i>PM2.5</div>
+            <div id="container_pm25" style="stroke: #fafafabd;"></div>
+          </div>
+          <div class="card card_pm10">
+            <div class="label" style="margin-top: 3px"><i class="fas fa-wind"
+                style="font-size: 30px; margin-right: 8px;"></i>PM10</div>
+            <div id="container_pm10" style="stroke: #fafafabd;"></div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Chart Widget -->
+      <div class="widget chart-container1">
+        <div class="chart-controls">
+          <div class="chart-mode-buttons">
+            <div class="second-btn">Currently</div>
+            <div class="hourly-btn">Hourly</div>
+            <div class="daily-btn">Daily</div>
+          </div>
+          <div class="chart-export-buttons">
+            <button class="export-btn" id="export-chart-btn" title="Export Chart">
+              <i class="fas fa-download"></i> Export Chart
+            </button>
+            <button class="export-btn" id="export-report-btn" title="Export Report">
+              <i class="fas fa-file-pdf"></i> Export Report
+            </button>
+          </div>
+          <div class="time-chart">
+            <input type="text" id="Time-chart" class="time-chart-input" placeholder="YYYY-MM-DD HH">
+          </div>
+        </div>
+        <figure class="highcharts-figure">
+          <div id="chart-container"></div>
+        </figure>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal cho FOTA -->
+  <div id="fota-modal" class="modal">
+    <div class="modal-content">
+      <span class="close">×</span>
+      <h2>Firmware OTA</h2>
+      
+      <!-- Tab Navigation -->
+      <div class="tab-navigation">
+        <button class="tab-btn active" data-tab="upload">Upload Firmware</button>
+        <button class="tab-btn" data-tab="versions">Firmware Versions</button>
+      </div>
+      
+      <!-- Upload Tab -->
+      <div id="upload-tab" class="tab-content active">
+        <div class="upload-form">
+          <h3>Upload New Firmware</h3>
+          <form id="firmware-upload-form" enctype="multipart/form-data">
+            <div class="form-group">
+              <label for="version-name">Version Name:</label>
+              <input type="text" id="version-name" name="versionName" placeholder="e.g., v1.2.3" required>
+            </div>
+            <div class="form-group">
+              <label for="firmware-file">Firmware File (.bin):</label>
+              <input type="file" id="firmware-file" name="firmwareFile" accept=".bin" required>
+            </div>
+            <div class="form-group">
+              <label for="description">Description (Optional):</label>
+              <textarea id="description" name="description" placeholder="Mô tả về phiên bản firmware..."></textarea>
+            </div>
+            <button type="submit" class="upload-btn">
+              <i class="fas fa-upload"></i> Upload Firmware
+            </button>
+          </form>
+          <div id="upload-progress" class="upload-progress" style="display: none;">
+            <div class="progress-bar">
+              <div class="progress-fill"></div>
+            </div>
+            <span class="progress-text">0%</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Versions Tab -->
+      <div id="versions-tab" class="tab-content">
+        <h3>Available Firmware Versions</h3>
+        <div id="versionList" class="version-list"></div>
+        <p id="upload-status"></p>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Scripts -->
+  <script src="https://rawgit.com/kimmobrunfeldt/progressbar.js/1.0.0/dist/progressbar.js" defer></script>
+  <script src="https://code.highcharts.com/highcharts.js" defer></script>
+  <script src="https://code.highcharts.com/modules/exporting.js" defer></script>
+  <script src="https://code.highcharts.com/modules/export-data.js" defer></script>
+  <script src="https://code.highcharts.com/modules/accessibility.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+  <script src="/index.js" defer></script>
+</body>
+
+</html>

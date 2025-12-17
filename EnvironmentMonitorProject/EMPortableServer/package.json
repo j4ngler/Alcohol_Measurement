@@ -1,0 +1,22 @@
+{
+  "name": "environment-monitor",
+  "version": "1.0.0",
+  "description": "Environment Monitor Dashboard - Real-time environmental sensor data monitoring with ESP32 integration",
+  "main": "Server.js",
+  "scripts": {
+    "start": "node Server.js",
+    "dev": "nodemon Server.js"
+  },
+  "keywords": ["environment", "monitoring", "esp32", "iot", "dashboard", "sensors"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^5.1.0",
+    "mongoose": "^8.14.1",
+    "multer": "^1.4.5-lts.2",
+    "ws": "^8.18.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}

@@ -1,0 +1,33 @@
+menu "SD Card Configuration"
+
+	config MISO_SDCARD
+		int "MISO Pin"
+		default 21
+		help
+			Config MISO Pin
+
+	config MOSI_SDCARD
+		int "MOSI Pin"
+		default 19	
+		help
+			Config MOSI Pin
+
+	config CLK_SDCARD
+		int "CLK Pin"
+		default 18
+		help
+			Config CLK Pin
+
+	config CS_SDCARD
+		int "CS Pin"
+		default 5
+		help
+			Config CS Pin
+
+	config SPI_HOST_SDCARD
+		int "SPI Host"
+		default 2
+		help
+			Config SPI Host
+endmenu
+
