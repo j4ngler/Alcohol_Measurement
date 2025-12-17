@@ -17,6 +17,7 @@
 
 # Dependencies
 **/dependencies.lock
+**/node_modules/
 
 # Compiled binaries
 **/*.bin
@@ -35,4 +36,7 @@
 
 # ESP-IDF specific
 **/sdkconfig.old
+
+# Large image files (optional - uncomment if needed)
+# **/EMPortableServer/public/imgs/
 
