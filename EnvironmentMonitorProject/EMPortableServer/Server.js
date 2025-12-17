@@ -6,7 +6,7 @@ const crypto = require('crypto');
 
 const app = express();
 
-let TemperatureValue = 50, HumidityValue = 0, PressureValue = 0, PM1Value = 0, PM25Value = 0, PM10Value = 0, Time = "";
+let TemperatureValue = 50, HumidityValue = 0, PressureValue = 0, EtOH1Value = 0, EtOH2Value = 0, EtOH3Value = 0, EtOH4Value = 0, Time = "";
 const {
   getAllVersions,
   getDataFirmware,
@@ -340,10 +340,11 @@ wss.on('connection', (ws) => {
             TemperatureValue = Number(parseFloat((data.Temperature ?? TemperatureValue)));
             HumidityValue = Number(parseFloat((data.Humidity ?? HumidityValue)));
             PressureValue = Number(parseFloat((data.Pressure ?? PressureValue)));
-            // Map PM1_0 -> PM1, PM2_5 -> PM25 if present
-            PM1Value = Number(parseFloat((data.PM1 ?? data.PM1_0 ?? PM1Value)));
-            PM25Value = Number(parseFloat((data.PM25 ?? data.PM2_5 ?? PM25Value)));
-            PM10Value = Number(parseFloat((data.PM10 ?? PM10Value)));
+            // Map EtOH values from Electronic-Nose (ADC_Value[0-3] or EtOH1-4 or ADC1-4)
+            EtOH1Value = Number(parseFloat((data.EtOH1 ?? data.ADC1 ?? data.ADC_Value?.[0] ?? EtOH1Value)));
+            EtOH2Value = Number(parseFloat((data.EtOH2 ?? data.ADC2 ?? data.ADC_Value?.[1] ?? EtOH2Value)));
+            EtOH3Value = Number(parseFloat((data.EtOH3 ?? data.ADC3 ?? data.ADC_Value?.[2] ?? EtOH3Value)));
+            EtOH4Value = Number(parseFloat((data.EtOH4 ?? data.ADC4 ?? data.ADC_Value?.[3] ?? EtOH4Value)));
 
             const fullStatus = {
               type: "status-all",
@@ -351,9 +352,10 @@ wss.on('connection', (ws) => {
                 Temperature: Number(TemperatureValue),
                 Humidity: Number(HumidityValue),
                 Pressure: Number(PressureValue),
-                PM1: Number(PM1Value),
-                PM25: Number(PM25Value),
-                PM10: Number(PM10Value)
+                EtOH1: Number(EtOH1Value),
+                EtOH2: Number(EtOH2Value),
+                EtOH3: Number(EtOH3Value),
+                EtOH4: Number(EtOH4Value)
               }
             };
 
@@ -372,9 +374,10 @@ wss.on('connection', (ws) => {
           Temperature: TemperatureValue,
           Humidity: HumidityValue,
           Pressure: PressureValue,
-          PM1: PM1Value,
-          PM25: PM25Value,
-          PM10: PM10Value
+          EtOH1: EtOH1Value,
+          EtOH2: EtOH2Value,
+          EtOH3: EtOH3Value,
+          EtOH4: EtOH4Value
         };
         saveRealTimeData(JSON.stringify(DataRealTime));
       }

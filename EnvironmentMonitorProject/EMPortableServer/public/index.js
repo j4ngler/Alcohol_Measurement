@@ -2,7 +2,7 @@
 const API_KEY = 'ec224bde787c4001b0281007251802';
 const LOCATION = 'Hanoi';
 const socket = new WebSocket('ws://localhost:8080');
-let TemperatureValue = 50, HumidityValue = 0, PressureValue = 0, PM1Value = 0, PM25Value = 0, PM10Value = 0;
+let TemperatureValue = 50, HumidityValue = 0, PressureValue = 0, EtOH1Value = 0, EtOH2Value = 0, EtOH3Value = 0, EtOH4Value = 0;
 let SecondlyChartStatus = false;
 let HourlyChartStatus = false;
 let DailyChartStatus = false;
@@ -504,9 +504,10 @@ const exportReport = async () => {
       temperature: TemperatureValue,
       humidity: HumidityValue,
       pressure: PressureValue,
-      pm1: PM1Value,
-      pm25: PM25Value,
-      pm10: PM10Value,
+      etoh1: EtOH1Value,
+      etoh2: EtOH2Value,
+      etoh3: EtOH3Value,
+      etoh4: EtOH4Value,
       timestamp: new Date().toISOString(),
       chartMode: modeName,
       timeInfo: timeInfo
@@ -530,9 +531,10 @@ const exportReport = async () => {
         temperature: hourlyData.Temperature[h],
         humidity: hourlyData.Humidity[h],
         pressure: hourlyData.Pressure[h],
-        pm1: hourlyData.PM1[h],
-        pm25: hourlyData.PM25[h],
-        pm10: hourlyData.PM10[h]
+        etoh1: hourlyData.EtOH1[h],
+        etoh2: hourlyData.EtOH2[h],
+        etoh3: hourlyData.EtOH3[h],
+        etoh4: hourlyData.EtOH4[h]
       });
     }
     
@@ -540,9 +542,10 @@ const exportReport = async () => {
     const avgTemp = hourlyValues.filter(v => v.temperature !== null).reduce((sum, v) => sum + v.temperature, 0) / hourlyValues.filter(v => v.temperature !== null).length || 0;
     const avgHumidity = hourlyValues.filter(v => v.humidity !== null).reduce((sum, v) => sum + v.humidity, 0) / hourlyValues.filter(v => v.humidity !== null).length || 0;
     const avgPressure = hourlyValues.filter(v => v.pressure !== null).reduce((sum, v) => sum + v.pressure, 0) / hourlyValues.filter(v => v.pressure !== null).length || 0;
-    const avgPM1 = hourlyValues.filter(v => v.pm1 !== null).reduce((sum, v) => sum + v.pm1, 0) / hourlyValues.filter(v => v.pm1 !== null).length || 0;
-    const avgPM25 = hourlyValues.filter(v => v.pm25 !== null).reduce((sum, v) => sum + v.pm25, 0) / hourlyValues.filter(v => v.pm25 !== null).length || 0;
-    const avgPM10 = hourlyValues.filter(v => v.pm10 !== null).reduce((sum, v) => sum + v.pm10, 0) / hourlyValues.filter(v => v.pm10 !== null).length || 0;
+    const avgEtOH1 = hourlyValues.filter(v => v.etoh1 !== null).reduce((sum, v) => sum + v.etoh1, 0) / hourlyValues.filter(v => v.etoh1 !== null).length || 0;
+    const avgEtOH2 = hourlyValues.filter(v => v.etoh2 !== null).reduce((sum, v) => sum + v.etoh2, 0) / hourlyValues.filter(v => v.etoh2 !== null).length || 0;
+    const avgEtOH3 = hourlyValues.filter(v => v.etoh3 !== null).reduce((sum, v) => sum + v.etoh3, 0) / hourlyValues.filter(v => v.etoh3 !== null).length || 0;
+    const avgEtOH4 = hourlyValues.filter(v => v.etoh4 !== null).reduce((sum, v) => sum + v.etoh4, 0) / hourlyValues.filter(v => v.etoh4 !== null).length || 0;
     
     sensorData = {
       mode: 'Hourly',
@@ -552,9 +555,10 @@ const exportReport = async () => {
       temperature: avgTemp,
       humidity: avgHumidity,
       pressure: avgPressure,
-      pm1: avgPM1,
-      pm25: avgPM25,
-      pm10: avgPM10,
+      etoh1: avgEtOH1,
+      etoh2: avgEtOH2,
+      etoh3: avgEtOH3,
+      etoh4: avgEtOH4,
       timestamp: new Date().toISOString(),
       chartMode: modeName,
       timeInfo: timeInfo,
@@ -579,9 +583,10 @@ const exportReport = async () => {
         temperature: dailyData.Temperature[d - 1],
         humidity: dailyData.Humidity[d - 1],
         pressure: dailyData.Pressure[d - 1],
-        pm1: dailyData.PM1[d - 1],
-        pm25: dailyData.PM25[d - 1],
-        pm10: dailyData.PM10[d - 1]
+        etoh1: dailyData.EtOH1[d - 1],
+        etoh2: dailyData.EtOH2[d - 1],
+        etoh3: dailyData.EtOH3[d - 1],
+        etoh4: dailyData.EtOH4[d - 1]
       });
     }
     
@@ -589,9 +594,10 @@ const exportReport = async () => {
     const avgTemp = dailyValues.filter(v => v.temperature !== null).reduce((sum, v) => sum + v.temperature, 0) / dailyValues.filter(v => v.temperature !== null).length || 0;
     const avgHumidity = dailyValues.filter(v => v.humidity !== null).reduce((sum, v) => sum + v.humidity, 0) / dailyValues.filter(v => v.humidity !== null).length || 0;
     const avgPressure = dailyValues.filter(v => v.pressure !== null).reduce((sum, v) => sum + v.pressure, 0) / dailyValues.filter(v => v.pressure !== null).length || 0;
-    const avgPM1 = dailyValues.filter(v => v.pm1 !== null).reduce((sum, v) => sum + v.pm1, 0) / dailyValues.filter(v => v.pm1 !== null).length || 0;
-    const avgPM25 = dailyValues.filter(v => v.pm25 !== null).reduce((sum, v) => sum + v.pm25, 0) / dailyValues.filter(v => v.pm25 !== null).length || 0;
-    const avgPM10 = dailyValues.filter(v => v.pm10 !== null).reduce((sum, v) => sum + v.pm10, 0) / dailyValues.filter(v => v.pm10 !== null).length || 0;
+    const avgEtOH1 = dailyValues.filter(v => v.etoh1 !== null).reduce((sum, v) => sum + v.etoh1, 0) / dailyValues.filter(v => v.etoh1 !== null).length || 0;
+    const avgEtOH2 = dailyValues.filter(v => v.etoh2 !== null).reduce((sum, v) => sum + v.etoh2, 0) / dailyValues.filter(v => v.etoh2 !== null).length || 0;
+    const avgEtOH3 = dailyValues.filter(v => v.etoh3 !== null).reduce((sum, v) => sum + v.etoh3, 0) / dailyValues.filter(v => v.etoh3 !== null).length || 0;
+    const avgEtOH4 = dailyValues.filter(v => v.etoh4 !== null).reduce((sum, v) => sum + v.etoh4, 0) / dailyValues.filter(v => v.etoh4 !== null).length || 0;
     
     sensorData = {
       mode: 'Daily',
@@ -600,9 +606,10 @@ const exportReport = async () => {
       temperature: avgTemp,
       humidity: avgHumidity,
       pressure: avgPressure,
-      pm1: avgPM1,
-      pm25: avgPM25,
-      pm10: avgPM10,
+      etoh1: avgEtOH1,
+      etoh2: avgEtOH2,
+      etoh3: avgEtOH3,
+      etoh4: avgEtOH4,
       timestamp: new Date().toISOString(),
       chartMode: modeName,
       timeInfo: timeInfo,
@@ -643,9 +650,10 @@ const generateReportContent = (data) => {
           <td>${formatValue(hourData.temperature)}</td>
           <td>${formatValue(hourData.humidity)}</td>
           <td>${formatValue(hourData.pressure)}</td>
-          <td>${formatValue(hourData.pm1)}</td>
-          <td>${formatValue(hourData.pm25)}</td>
-          <td>${formatValue(hourData.pm10)}</td>
+          <td>${formatValue(hourData.etoh1)}</td>
+          <td>${formatValue(hourData.etoh2)}</td>
+          <td>${formatValue(hourData.etoh3)}</td>
+          <td>${formatValue(hourData.etoh4)}</td>
         </tr>
       `;
     });
@@ -662,9 +670,10 @@ const generateReportContent = (data) => {
             <td>${formatValue(dayData.temperature)}</td>
             <td>${formatValue(dayData.humidity)}</td>
             <td>${formatValue(dayData.pressure)}</td>
-            <td>${formatValue(dayData.pm1)}</td>
-            <td>${formatValue(dayData.pm25)}</td>
-            <td>${formatValue(dayData.pm10)}</td>
+            <td>${formatValue(dayData.etoh1)}</td>
+            <td>${formatValue(dayData.etoh2)}</td>
+            <td>${formatValue(dayData.etoh3)}</td>
+            <td>${formatValue(dayData.etoh4)}</td>
           </tr>
         `;
       }
@@ -740,22 +749,28 @@ const generateReportContent = (data) => {
               <td>${data.pressure > 1020 ? 'Cao' : data.pressure < 980 ? 'Thấp' : 'Bình thường'}</td>
             </tr>
             <tr>
-              <td>PM1.0</td>
-              <td>${formatValue(data.pm1)}</td>
-              <td>μg/m³</td>
-              <td>${data.pm1 > 25 ? 'Cao' : data.pm1 < 10 ? 'Thấp' : 'Bình thường'}</td>
+              <td>EtOH1</td>
+              <td>${formatValue(data.etoh1)}</td>
+              <td>Raw</td>
+              <td>${data.etoh1 > 20000 ? 'Cao' : data.etoh1 < 5000 ? 'Thấp' : 'Bình thường'}</td>
             </tr>
             <tr>
-              <td>PM2.5</td>
-              <td>${formatValue(data.pm25)}</td>
-              <td>μg/m³</td>
-              <td>${data.pm25 > 25 ? 'Cao' : data.pm25 < 10 ? 'Thấp' : 'Bình thường'}</td>
+              <td>EtOH2</td>
+              <td>${formatValue(data.etoh2)}</td>
+              <td>Raw</td>
+              <td>${data.etoh2 > 20000 ? 'Cao' : data.etoh2 < 5000 ? 'Thấp' : 'Bình thường'}</td>
             </tr>
             <tr>
-              <td>PM10</td>
-              <td>${formatValue(data.pm10)}</td>
-              <td>μg/m³</td>
-              <td>${data.pm10 > 50 ? 'Cao' : data.pm10 < 20 ? 'Thấp' : 'Bình thường'}</td>
+              <td>EtOH3</td>
+              <td>${formatValue(data.etoh3)}</td>
+              <td>Raw</td>
+              <td>${data.etoh3 > 20000 ? 'Cao' : data.etoh3 < 5000 ? 'Thấp' : 'Bình thường'}</td>
+            </tr>
+            <tr>
+              <td>EtOH4</td>
+              <td>${formatValue(data.etoh4)}</td>
+              <td>Raw</td>
+              <td>${data.etoh4 > 20000 ? 'Cao' : data.etoh4 < 5000 ? 'Thấp' : 'Bình thường'}</td>
             </tr>
           </tbody>
         </table>
@@ -773,9 +788,10 @@ const generateReportContent = (data) => {
                 <th>Nhiệt Độ (°C)</th>
                 <th>Độ Ẩm (%)</th>
                 <th>Áp Suất (hPa)</th>
-                <th>PM1.0 (μg/m³)</th>
-                <th>PM2.5 (μg/m³)</th>
-                <th>PM10 (μg/m³)</th>
+                <th>EtOH1 (Raw)</th>
+                <th>EtOH2 (Raw)</th>
+                <th>EtOH3 (Raw)</th>
+                <th>EtOH4 (Raw)</th>
               </tr>
             </thead>
             <tbody>
@@ -795,9 +811,10 @@ const generateReportContent = (data) => {
                 <th>Nhiệt Độ (°C)</th>
                 <th>Độ Ẩm (%)</th>
                 <th>Áp Suất (hPa)</th>
-                <th>PM1.0 (μg/m³)</th>
-                <th>PM2.5 (μg/m³)</th>
-                <th>PM10 (μg/m³)</th>
+                <th>EtOH1 (Raw)</th>
+                <th>EtOH2 (Raw)</th>
+                <th>EtOH3 (Raw)</th>
+                <th>EtOH4 (Raw)</th>
               </tr>
             </thead>
             <tbody>
@@ -917,16 +934,16 @@ const initProgressBars = () => {
       temp: new ProgressBar.SemiCircle('#container_temperature', { ...commonConfig, text: { value: '', alignToBottom: false, className: 'progressbar_label' } }),
       humidity: new ProgressBar.Line('#container_humidity', { ...commonConfig, text: { value: '', className: 'humidity_label' } }),
       pressure: new ProgressBar.Line('#container_pressure', { ...commonConfig, text: { value: '', className: 'pressure_label' } }),
-      pm1: new ProgressBar.Line('#container_pm1', { ...commonConfig, text: { value: '', className: 'pm1_label' } }),
-      pm25: new ProgressBar.Line('#container_pm25', { ...commonConfig, text: { value: '', className: 'pm25_label' } }),
-      pm10: new ProgressBar.Line('#container_pm10', { ...commonConfig, text: { value: '', className: 'pm10_label' } })
+      etoh1: new ProgressBar.Line('#container_etoh1', { ...commonConfig, text: { value: '', className: 'etoh1_label' } }),
+      etoh2: new ProgressBar.Line('#container_etoh2', { ...commonConfig, text: { value: '', className: 'etoh2_label' } }),
+      etoh3: new ProgressBar.Line('#container_etoh3', { ...commonConfig, text: { value: '', className: 'etoh3_label' } })
     };
     progressBars.temp.animate(TemperatureValue / 100);
     progressBars.humidity.animate(HumidityValue / 100);
     progressBars.pressure.animate(PressureValue / 100);
-    progressBars.pm1.animate(PM1Value / 100);
-    progressBars.pm25.animate(PM25Value / 100);
-    progressBars.pm10.animate(PM10Value / 100);
+    progressBars.etoh1.animate(Math.min(EtOH1Value / 32767, 1)); // ADC max value is 32767
+    progressBars.etoh2.animate(Math.min(EtOH2Value / 32767, 1));
+    progressBars.etoh3.animate(Math.min(EtOH3Value / 32767, 1));
   } catch (error) {
     console.error('Error initializing progress bars:', error);
   }
@@ -960,9 +977,10 @@ const initHighcharts = () => {
       Temperature: [],
       Humidity: [],
       Pressure: [],
-      PM1: [],
-      PM25: [],
-      PM10: []
+      EtOH1: [],
+      EtOH2: [],
+      EtOH3: [],
+      EtOH4: []
     };
     const hourlyData = generateChartDataFromHourlyAllMetrics();
     for (let i = 0; i < 24; i++) {
@@ -970,9 +988,10 @@ const initHighcharts = () => {
       result.Temperature.push({ x, y: hourlyData.Temperature[i] ?? null });
       result.Humidity.push({ x, y: hourlyData.Humidity[i] ?? null });
       result.Pressure.push({ x, y: hourlyData.Pressure[i] ?? null });
-      result.PM1.push({ x, y: hourlyData.PM1[i] ?? null });
-      result.PM25.push({ x, y: hourlyData.PM25[i] ?? null });
-      result.PM10.push({ x, y: hourlyData.PM10[i] ?? null });
+      result.EtOH1.push({ x, y: hourlyData.EtOH1[i] ?? null });
+      result.EtOH2.push({ x, y: hourlyData.EtOH2[i] ?? null });
+      result.EtOH3.push({ x, y: hourlyData.EtOH3[i] ?? null });
+      result.EtOH4.push({ x, y: hourlyData.EtOH4[i] ?? null });
     }
     return result;
   };
@@ -981,9 +1000,10 @@ const initHighcharts = () => {
       Temperature: [],
       Humidity: [],
       Pressure: [],
-      PM1: [],
-      PM25: [],
-      PM10: []
+      EtOH1: [],
+      EtOH2: [],
+      EtOH3: [],
+      EtOH4: []
     };
     const dailyData = generateChartDataFromDailyAllMetrics();
     const startDate = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
@@ -992,9 +1012,10 @@ const initHighcharts = () => {
       result.Temperature.push({ x, y: dailyData.Temperature[i] ?? null });
       result.Humidity.push({ x, y: dailyData.Humidity[i] ?? null });
       result.Pressure.push({ x, y: dailyData.Pressure[i] ?? null });
-      result.PM1.push({ x, y: dailyData.PM1[i] ?? null });
-      result.PM25.push({ x, y: dailyData.PM25[i] ?? null });
-      result.PM10.push({ x, y: dailyData.PM10[i] ?? null });
+      result.EtOH1.push({ x, y: dailyData.EtOH1[i] ?? null });
+      result.EtOH2.push({ x, y: dailyData.EtOH2[i] ?? null });
+      result.EtOH3.push({ x, y: dailyData.EtOH3[i] ?? null });
+      result.EtOH4.push({ x, y: dailyData.EtOH4[i] ?? null });
     }
     return result;
   };
@@ -1004,18 +1025,20 @@ const initHighcharts = () => {
       Temperature: [],
       Humidity: [],
       Pressure: [],
-      PM1: [],
-      PM25: [],
-      PM10: []
+      EtOH1: [],
+      EtOH2: [],
+      EtOH3: [],
+      EtOH4: []
     };
     for (let i = -19; i <= 0; i++) {
       const x = now + i * 1000;
       result.Temperature.push({ x, y: TemperatureValue });
       result.Humidity.push({ x, y: HumidityValue });
       result.Pressure.push({ x, y: PressureValue });
-      result.PM1.push({ x, y: PM1Value });
-      result.PM25.push({ x, y: PM25Value });
-      result.PM10.push({ x, y: PM10Value });
+      result.EtOH1.push({ x, y: EtOH1Value });
+      result.EtOH2.push({ x, y: EtOH2Value });
+      result.EtOH3.push({ x, y: EtOH3Value });
+      result.EtOH4.push({ x, y: EtOH4Value });
     }
     return result;
   };
@@ -1043,9 +1066,10 @@ const initHighcharts = () => {
         { seriesIndex: 0, y: TemperatureValue },
         { seriesIndex: 1, y: HumidityValue },
         { seriesIndex: 2, y: PressureValue },
-        { seriesIndex: 3, y: PM1Value },
-        { seriesIndex: 4, y: PM25Value },
-        { seriesIndex: 5, y: PM10Value }
+        { seriesIndex: 3, y: EtOH1Value },
+        { seriesIndex: 4, y: EtOH2Value },
+        { seriesIndex: 5, y: EtOH3Value },
+        { seriesIndex: 6, y: EtOH4Value }
       ];
       newDataPoints.forEach(dataPoint => {
         const seriesTarget = chart.series[dataPoint.seriesIndex];
@@ -1148,9 +1172,10 @@ const initHighcharts = () => {
         { name: 'Temperature (°C)', lineWidth: 2, color: 'red', data: seriesDataFunc.Temperature },
         { name: 'Humidity (%)', lineWidth: 2, color: 'blue', data: seriesDataFunc.Humidity, visible: false },
         { name: 'Pressure (hPa)', lineWidth: 2, color: 'green', data: seriesDataFunc.Pressure, visible: false },
-        { name: 'PM1.0 (μg/m³)', lineWidth: 2, color: 'yellow', data: seriesDataFunc.PM1, visible: false },
-        { name: 'PM2.5 (μg/m³)', lineWidth: 2, color: 'purple', data: seriesDataFunc.PM25, visible: false },
-        { name: 'PM10 (μg/m³)', lineWidth: 2, color: 'orange', data: seriesDataFunc.PM10, visible: false }
+        { name: 'EtOH1 (Raw)', lineWidth: 2, color: 'yellow', data: seriesDataFunc.EtOH1, visible: false },
+        { name: 'EtOH2 (Raw)', lineWidth: 2, color: 'purple', data: seriesDataFunc.EtOH2, visible: false },
+        { name: 'EtOH3 (Raw)', lineWidth: 2, color: 'orange', data: seriesDataFunc.EtOH3, visible: false },
+        { name: 'EtOH4 (Raw)', lineWidth: 2, color: 'cyan', data: seriesDataFunc.EtOH4, visible: false }
       ]
     });
     console.log('Chart created successfully!');
@@ -1169,9 +1194,10 @@ function getMonthlyDailyHourlyAverages(dataArray) {
         Temperature: [],
         Humidity: [],
         Pressure: [],
-        PM1: [],
-        PM25: [],
-        PM10: []
+        EtOH1: [],
+        EtOH2: [],
+        EtOH3: [],
+        EtOH4: []
       }))
     )
   );
@@ -1184,9 +1210,10 @@ function getMonthlyDailyHourlyAverages(dataArray) {
       monthlyDailyHourlyData[month][day][hour].Temperature.push(entry.Temperature);
       monthlyDailyHourlyData[month][day][hour].Humidity.push(entry.Humidity);
       monthlyDailyHourlyData[month][day][hour].Pressure.push(entry.Pressure);
-      monthlyDailyHourlyData[month][day][hour].PM1.push(entry.PM1);
-      monthlyDailyHourlyData[month][day][hour].PM25.push(entry.PM25);
-      monthlyDailyHourlyData[month][day][hour].PM10.push(entry.PM10);
+      monthlyDailyHourlyData[month][day][hour].EtOH1.push(entry.EtOH1);
+      monthlyDailyHourlyData[month][day][hour].EtOH2.push(entry.EtOH2);
+      monthlyDailyHourlyData[month][day][hour].EtOH3.push(entry.EtOH3);
+      monthlyDailyHourlyData[month][day][hour].EtOH4.push(entry.EtOH4);
     }
   });
   const average = arr => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
@@ -1201,9 +1228,10 @@ function getMonthlyDailyHourlyAverages(dataArray) {
         Temperature: average(hourData.Temperature),
         Humidity: average(hourData.Humidity),
         Pressure: average(hourData.Pressure),
-        PM1: average(hourData.PM1),
-        PM25: average(hourData.PM25),
-        PM10: average(hourData.PM10)
+        EtOH1: average(hourData.EtOH1),
+        EtOH2: average(hourData.EtOH2),
+        EtOH3: average(hourData.EtOH3),
+        EtOH4: average(hourData.EtOH4)
       }));
     });
   });
@@ -1219,9 +1247,10 @@ function getMonthlyDailyAverages(dataArray) {
       Temperature: [],
       Humidity: [],
       Pressure: [],
-      PM1: [],
-      PM25: [],
-      PM10: []
+      EtOH1: [],
+      EtOH2: [],
+      EtOH3: [],
+      EtOH4: []
     }))
   );
   dataArray.forEach(entry => {
@@ -1232,9 +1261,10 @@ function getMonthlyDailyAverages(dataArray) {
       monthlyDailyData[month][day].Temperature.push(entry.Temperature);
       monthlyDailyData[month][day].Humidity.push(entry.Humidity);
       monthlyDailyData[month][day].Pressure.push(entry.Pressure);
-      monthlyDailyData[month][day].PM1.push(entry.PM1);
-      monthlyDailyData[month][day].PM25.push(entry.PM25);
-      monthlyDailyData[month][day].PM10.push(entry.PM10);
+      monthlyDailyData[month][day].EtOH1.push(entry.EtOH1);
+      monthlyDailyData[month][day].EtOH2.push(entry.EtOH2);
+      monthlyDailyData[month][day].EtOH3.push(entry.EtOH3);
+      monthlyDailyData[month][day].EtOH4.push(entry.EtOH4);
     }
   });
   const average = arr => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
@@ -1248,9 +1278,10 @@ function getMonthlyDailyAverages(dataArray) {
         Temperature: average(dayData.Temperature),
         Humidity: average(dayData.Humidity),
         Pressure: average(dayData.Pressure),
-        PM1: average(dayData.PM1),
-        PM25: average(dayData.PM25),
-        PM10: average(dayData.PM10)
+        EtOH1: average(dayData.EtOH1),
+        EtOH2: average(dayData.EtOH2),
+        EtOH3: average(dayData.EtOH3),
+        EtOH4: average(dayData.EtOH4)
       };
     });
   });
@@ -1277,13 +1308,14 @@ function generateChartDataFromHourlyAllMetrics() {
     Temperature: [],
     Humidity: [],
     Pressure: [],
-    PM1: [],
-    PM25: [],
-    PM10: []
+    ADC1: [],
+    ADC2: [],
+    ADC3: [],
+    ADC4: []
   };
   if (!year || !month || !day) return result;
   for (let h = 0; h < 24; h++) {
-    ['Temperature', 'Humidity', 'Pressure', 'PM1', 'PM25', 'PM10'].forEach(key => {
+    ['Temperature', 'Humidity', 'Pressure', 'EtOH1', 'EtOH2', 'EtOH3', 'EtOH4'].forEach(key => {
       const value = getHourlyValue(month, day, h, key);
       result[key].push(value);
     });
@@ -1296,13 +1328,14 @@ function generateChartDataFromDailyAllMetrics() {
     Temperature: [],
     Humidity: [],
     Pressure: [],
-    PM1: [],
-    PM25: [],
-    PM10: []
+    ADC1: [],
+    ADC2: [],
+    ADC3: [],
+    ADC4: []
   };
   if (!year || !month) return result;
   for (let d = 1; d <= 31; d++) {
-    ['Temperature', 'Humidity', 'Pressure', 'PM1', 'PM25', 'PM10'].forEach(key => {
+    ['Temperature', 'Humidity', 'Pressure', 'EtOH1', 'EtOH2', 'EtOH3', 'EtOH4'].forEach(key => {
       const value = getDailyValue(month, d, key);
       result[key].push(value);
     });
@@ -1387,16 +1420,17 @@ socket.onmessage = (event) => {
         if ('Temperature' in status) TemperatureValue = parseFloat(status.Temperature);
         if ('Humidity' in status) HumidityValue = parseFloat(status.Humidity);
         if ('Pressure' in status) PressureValue = parseFloat(status.Pressure);
-        if ('PM1' in status) PM1Value = parseFloat(status.PM1);
-        if ('PM25' in status) PM25Value = parseFloat(status.PM25);
-        if ('PM10' in status) PM10Value = parseFloat(status.PM10);
+        if ('EtOH1' in status) EtOH1Value = parseFloat(status.EtOH1);
+        if ('EtOH2' in status) EtOH2Value = parseFloat(status.EtOH2);
+        if ('EtOH3' in status) EtOH3Value = parseFloat(status.EtOH3);
+        if ('EtOH4' in status) EtOH4Value = parseFloat(status.EtOH4);
         if (progressBars) {
           progressBars.temp.animate(TemperatureValue / 100);
           progressBars.humidity.animate(HumidityValue / 100);
           progressBars.pressure.animate(PressureValue / 100);
-          progressBars.pm1.animate(PM1Value / 100);
-          progressBars.pm25.animate(PM25Value / 100);
-          progressBars.pm10.animate(PM10Value / 100);
+          progressBars.etoh1.animate(Math.min(EtOH1Value / 32767, 1)); // ADC max value is 32767
+          progressBars.etoh2.animate(Math.min(EtOH2Value / 32767, 1));
+          progressBars.etoh3.animate(Math.min(EtOH3Value / 32767, 1));
         }
         updateUI();
         console.log('✅ Successfully applied data from server');
