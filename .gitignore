@@ -1,0 +1,38 @@
+# ESP-IDF Build System
+**/build/
+**/sdkconfig.old
+**/*.pyc
+**/__pycache__/
+
+# IDE
+**/.vscode/
+**/.idea/
+**/*.swp
+**/*.swo
+**/*~
+
+# OS
+**/.DS_Store
+**/Thumbs.db
+
+# Dependencies
+**/dependencies.lock
+
+# Compiled binaries
+**/*.bin
+**/*.elf
+**/*.map
+
+# Logs
+**/*.log
+
+# Temporary files
+**/*.tmp
+**/*.bak
+
+# Cache
+**/.cache/
+
+# ESP-IDF specific
+**/sdkconfig.old
+
