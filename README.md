@@ -1,11 +1,11 @@
 # Alcohol Measurement System - Source Code
 
-Repository chứa toàn bộ source code cho hệ thống đo nồng độ cồn, bao gồm:
+Repository chứa source code cho hệ thống đo nồng độ cồn, bao gồm firmware ESP32 và dashboard server.
 
 ## 📁 Cấu trúc thư mục
 
 ### 1. `Electronic-Nose/`
-Firmware ESP-IDF ban đầu cho thiết bị đo nồng độ cồn:
+**Firmware ESP-IDF** cho thiết bị đo nồng độ cồn:
 - Đọc ADC từ ADS1115 (4 kênh)
 - Sử dụng DS3231 RTC
 - Lưu dữ liệu vào SD Card
@@ -21,39 +21,22 @@ Firmware ESP-IDF ban đầu cho thiết bị đo nồng độ cồn:
 - WebServer: HTTP server cho cấu hình
 - SNTP_Sync: Đồng bộ thời gian
 
-### 2. `EnvironmentMonitorProject/EnvironmentMonitorPortable/`
-Firmware ESP-IDF được tối ưu hóa và refactor từ Electronic-Nose:
-- Kiến trúc modular với TaskManager
-- Chỉ tập trung vào đo nồng độ cồn (đã loại bỏ BME280, PMS7003, OLED)
-- WebSocket client để gửi dữ liệu real-time
-- WiFi Manager với captive portal
-- FOTA support
+### 2. `EnvironmentMonitorProject/EMPortableServer/`
+**Dashboard Server** (Node.js + Express + WebSocket + MongoDB):
+- Real-time monitoring: Hiển thị dữ liệu từ ESP32
+- WebSocket server: Nhận dữ liệu từ ESP32 và gửi đến frontend
+- Firmware OTA: Upload và quản lý firmware cho ESP32
+- MongoDB: Lưu trữ dữ liệu sensor và firmware
+- Charts: Biểu đồ real-time, hourly, daily
 
-**Components:**
-- ADS111x: Driver ADC cho cảm biến nồng độ cồn
-- DS3231: RTC module
-- SD_Card: Lưu trữ dữ liệu
-- TaskManager: Quản lý FreeRTOS tasks
-- WifiManager: Quản lý WiFi (STA + AP mode)
-- WebSocket: Gửi dữ liệu lên server
-- SNTP_Sync: Đồng bộ thời gian
-- FOTAManager: OTA updates
-
-## 🎯 Sự khác biệt giữa 2 projects
-
-| Tính năng | Electronic-Nose | EnvironmentMonitorPortable |
-|-----------|----------------|---------------------------|
-| Kiến trúc | Monolithic | Modular với TaskManager |
-| Sensors | ADS1115 + DS3231 | ADS1115 + DS3231 |
-| Display | Không | Không (đã bỏ OLED) |
-| Communication | HTTP Server | WebSocket Client |
-| WiFi Config | SmartConfig | Captive Portal |
-| Data Storage | SD Card | SD Card |
-| OTA | Không | Có (FOTA) |
+**Tech Stack:**
+- Backend: Node.js + Express + WebSocket
+- Frontend: HTML/CSS/JS (Highcharts, ProgressBar, Flatpickr)
+- Database: MongoDB
 
 ## 🚀 Sử dụng
 
-### Electronic-Nose
+### Firmware (Electronic-Nose)
 ```bash
 cd Electronic-Nose
 idf.py build
@@ -61,34 +44,40 @@ idf.py flash
 idf.py monitor
 ```
 
-### EnvironmentMonitorPortable
+### Dashboard Server (EMPortableServer)
 ```bash
-cd EnvironmentMonitorProject/EnvironmentMonitorPortable
-idf.py build
-idf.py flash
-idf.py monitor
+cd EnvironmentMonitorProject/EMPortableServer
+npm install
+node Server.js
+# Server chạy trên port 3000 (HTTP) và 8080 (WebSocket)
+# Truy cập: http://localhost:3000/
 ```
 
 ## 📋 Yêu cầu
 
+### Firmware
 - **ESP-IDF** v5.1 hoặc mới hơn
 - **ESP32** development board
 - **ADS1115** ADC module
 - **DS3231** RTC module
 - **SD Card** module (SPI interface)
 
-## 🔧 Cấu hình
-
-Xem README.md trong từng project để biết chi tiết cấu hình:
-- `Electronic-Nose/README.md` (nếu có)
-- `EnvironmentMonitorProject/EnvironmentMonitorPortable/README.md`
+### Dashboard
+- **Node.js** >= 18
+- **MongoDB** >= 4.0 (local hoặc cloud)
+- Modern browser (Chrome/Firefox/Edge)
 
 ## 📊 Dữ liệu
 
-Cả 2 projects đều:
+Firmware ESP32:
 - Đọc 4 kênh ADC từ ADS1115
 - Lưu dữ liệu với timestamp từ DS3231
-- Gửi dữ liệu qua network (HTTP hoặc WebSocket)
+- Gửi dữ liệu qua WebSocket lên dashboard server
+
+Dashboard:
+- Nhận dữ liệu real-time từ ESP32 qua WebSocket
+- Lưu trữ vào MongoDB
+- Hiển thị biểu đồ và thống kê
 
 ## 👤 Tác giả
 
