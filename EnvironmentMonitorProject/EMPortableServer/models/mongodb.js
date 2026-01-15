@@ -87,10 +87,10 @@ const Real_Data = new mongoose.Schema({
   Time: String,
   Temperature: Number,
   Humidity: Number,
-  Pressure: Number,
-  PM1: Number,
-  PM25: Number,
-  PM10: Number
+  EtOH1: Number,
+  EtOH2: Number,
+  EtOH3: Number,
+  EtOH4: Number
 });
 
 
@@ -106,10 +106,10 @@ async function saveRealTimeData(jsonString) {
       Time: parsed.Time,
       Temperature: parsed.Temperature,
       Humidity: parsed.Humidity,
-      Pressure: parsed.Pressure,
-      PM1: parsed.PM1,
-      PM25: parsed.PM25,
-      PM10: parsed.PM10
+      EtOH1: parsed.EtOH1,
+      EtOH2: parsed.EtOH2,
+      EtOH3: parsed.EtOH3,
+      EtOH4: parsed.EtOH4
     });
 
     console.log("✅ Dữ liệu đã được cập nhật vào database:", parsed);

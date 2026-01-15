@@ -85,6 +85,7 @@ body {
 .nav div {
   display: flex;
   align-items: center;
+  gap: 10px;
 }
 
 .nav a.active {
@@ -550,6 +551,86 @@ svg {
 
 .fota-btn {
   right: 30%;
+}
+
+.sampling-btn {
+  background: linear-gradient(45deg, #2196F3, #1976D2);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.sampling-btn:hover {
+  background: linear-gradient(45deg, #1976D2, #1565C0);
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.5);
+  transform: translateY(-2px);
+}
+
+.sampling-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(33, 150, 243, 0.3);
+}
+
+.sampling-btn:disabled {
+  background: linear-gradient(45deg, #9E9E9E, #757575);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.sampling-btn.sampling {
+  background: linear-gradient(45deg, #FF9800, #F57C00);
+  animation: samplingPulse 1.5s infinite;
+}
+
+@keyframes samplingPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 152, 0, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(255, 152, 0, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 152, 0, 0);
+  }
+}
+
+.sampling-status {
+  display: inline-block;
+  margin-left: 10px;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.sampling-status.idle {
+  background: rgba(158, 158, 158, 0.3);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.sampling-status.sampling {
+  background: rgba(255, 152, 0, 0.3);
+  color: #FF9800;
+}
+
+.sampling-status.success {
+  background: rgba(76, 175, 80, 0.3);
+  color: #4CAF50;
+}
+
+.sampling-status.error {
+  background: rgba(244, 67, 54, 0.3);
+  color: #F44336;
 }
 
 

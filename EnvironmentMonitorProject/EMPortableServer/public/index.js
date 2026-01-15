@@ -2,7 +2,7 @@
 const API_KEY = 'ec224bde787c4001b0281007251802';
 const LOCATION = 'Hanoi';
 const socket = new WebSocket('ws://localhost:8080');
-let TemperatureValue = 50, HumidityValue = 0, PressureValue = 0, EtOH1Value = 0, EtOH2Value = 0, EtOH3Value = 0, EtOH4Value = 0;
+let TemperatureValue = 50, HumidityValue = 0, EtOH1Value = 0, EtOH2Value = 0, EtOH3Value = 0, EtOH4Value = 0;
 let SecondlyChartStatus = false;
 let HourlyChartStatus = false;
 let DailyChartStatus = false;
@@ -41,6 +41,7 @@ const initDOM = () => {
   DOM = {
     weatherContainer: document.getElementById('weather-container'),
     fotaBtn: document.querySelector('.fota-btn'),
+    startSamplingBtn: document.getElementById('start-sampling-btn'),
     loadingIcon: document.getElementById("Icon_Loading"),
     fotaModal: document.getElementById('fota-modal'),
     fotaCloseBtn: document.getElementsByClassName('close')[0],
@@ -64,6 +65,7 @@ const initDOM = () => {
   if (!DOM.fotaBtn) console.error('fotaBtn not found');
   if (!DOM.fotaCloseBtn) console.error('fotaCloseBtn not found');
   if (!DOM.versionList) console.error('versionlist not found');
+  if (!DOM.startSamplingBtn) console.error('startSamplingBtn not found');
 
   console.log('DOM initialized:', DOM);
 };
@@ -220,6 +222,13 @@ const initEventListeners = () => {
   }
   if (!DOM) return;
   console.log('Initializing event listeners...');
+  
+  // Start Sampling Button
+  if (DOM.startSamplingBtn) {
+    DOM.startSamplingBtn.addEventListener('click', async () => {
+      await startSampling();
+    });
+  }
   
   // Tab switching
   DOM.tabBtns.forEach(btn => {
@@ -379,59 +388,84 @@ const initEventListeners = () => {
   updateChartStatus('secondly');
 };
 
+// Sampling Control Functions
+let isSampling = false;
+
+const startSampling = async () => {
+  if (isSampling) {
+    console.log('⚠️ Sampling already in progress');
+    return;
+  }
+
+  if (!DOM.startSamplingBtn) return;
+
+  try {
+    isSampling = true;
+    DOM.startSamplingBtn.disabled = true;
+    DOM.startSamplingBtn.classList.add('sampling');
+    DOM.startSamplingBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Starting...';
+
+    console.log('📡 Sending start sampling request to server...');
+
+    const response = await fetch('/api/esp32/start-sampling', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      console.log('✅ Sampling started successfully:', result);
+      DOM.startSamplingBtn.innerHTML = '<i class="fas fa-check"></i> Sampling Started';
+      DOM.startSamplingBtn.style.background = 'linear-gradient(45deg, #4CAF50, #45a049)';
+      
+      // Reset button after 3 seconds
+      setTimeout(() => {
+        resetSamplingButton();
+      }, 3000);
+    } else {
+      throw new Error(result.message || 'Failed to start sampling');
+    }
+  } catch (error) {
+    console.error('❌ Error starting sampling:', error);
+    DOM.startSamplingBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error';
+    DOM.startSamplingBtn.style.background = 'linear-gradient(45deg, #F44336, #D32F2F)';
+    
+    // Show error message
+    alert(`Lỗi khi bắt đầu đo: ${error.message}\n\nVui lòng kiểm tra:\n- ESP32 đã kết nối qua WebSocket\n- ESP32 đang chạy và sẵn sàng`);
+    
+    // Reset button after 3 seconds
+    setTimeout(() => {
+      resetSamplingButton();
+    }, 3000);
+  }
+};
+
+const resetSamplingButton = () => {
+  if (!DOM.startSamplingBtn) return;
+  isSampling = false;
+  DOM.startSamplingBtn.disabled = false;
+  DOM.startSamplingBtn.classList.remove('sampling');
+  DOM.startSamplingBtn.innerHTML = '<i class="fas fa-play"></i> Start Sampling';
+  DOM.startSamplingBtn.style.background = '';
+};
+
 // Export Functions
 const exportChart = () => {
-  // Wait for Highcharts to be fully loaded
-  if (typeof Highcharts === 'undefined') {
-    alert('Chart library chưa được tải! Vui lòng đợi...');
-    return;
-  }
-  
-  // Check if exporting module is loaded
-  if (!Highcharts.Chart.prototype.exportChart) {
-    alert('Export module chưa được tải! Vui lòng tải lại trang.');
-    console.error('Highcharts exporting module not available');
-    return;
-  }
-  
-  // Try multiple methods to get chart instance
-  let chart = currentChart;
-  
-  // If not found, try to find from container
-  if (!chart) {
-    const container = document.getElementById('chart-container');
-    if (container) {
-      // Find chart by matching container
-      chart = Highcharts.charts.find(ch => ch && ch.container && ch.container.id === 'chart-container');
-    }
-  }
-  
-  // If still not found, try first available chart
-  if (!chart && Highcharts.charts && Highcharts.charts.length > 0) {
-    chart = Highcharts.charts.find(ch => ch !== null && ch !== undefined && ch.renderTo);
-  }
-  
-  if (!chart) {
-    alert('Không tìm thấy biểu đồ để xuất!');
-    console.error('Chart instance not found. Available charts:', Highcharts.charts);
-    console.log('Current chart variable:', currentChart);
-    console.log('Chart container:', document.getElementById('chart-container'));
-    return;
-  }
-  
-  // Verify chart is ready
-  if (!chart.renderTo || !chart.series) {
-    alert('Biểu đồ chưa sẵn sàng để xuất! Vui lòng đợi một chút.');
-    console.error('Chart not ready:', chart);
-    return;
-  }
-  
-  // Get current date for filename
+  exportCSV();
+};
+
+const exportReport = () => {
+  exportCSV();
+};
+
+// Export CSV cho dữ liệu đang hiển thị
+const exportCSV = () => {
   const now = new Date();
   const dateStr = now.toISOString().split('T')[0];
   const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, '-');
-  
-  // Get mode name for filename
   const modeName = modeChart === 0 ? 'Currently' : modeChart === 1 ? 'Hourly' : 'Daily';
   let modeSuffix = '';
   if (modeChart === 1 && year && month && day) {
@@ -439,194 +473,67 @@ const exportChart = () => {
   } else if (modeChart === 2 && year && month) {
     modeSuffix = `-${year}-${String(month).padStart(2, '0')}`;
   }
-  
-  try {
-    console.log('Exporting chart:', chart);
-    console.log('Filename:', `sensor-chart-${modeName}${modeSuffix}-${dateStr}-${timeStr}`);
-    
-    // Export chart as PNG
-    chart.exportChart({
-      type: 'image/png',
-      filename: `sensor-chart-${modeName}${modeSuffix}-${dateStr}-${timeStr}`,
-      sourceWidth: chart.chartWidth || 1200,
-      sourceHeight: chart.chartHeight || 600
-    });
-    console.log('Chart exported successfully!');
-  } catch (error) {
-    console.error('Error exporting chart:', error);
-    alert('Lỗi khi xuất đồ thị: ' + error.message);
-  }
-};
 
-const exportReport = async () => {
-  // Get chart image first
-  let chartImage = '';
-  try {
-    if (typeof Highcharts !== 'undefined') {
-      // Try multiple methods to get chart instance
-      let chart = currentChart;
-      
-      if (!chart) {
-        const container = document.getElementById('chart-container');
-        if (container) {
-          chart = Highcharts.charts.find(ch => ch && ch.container && ch.container.id === 'chart-container');
-        }
-      }
-      
-      if (!chart && Highcharts.charts && Highcharts.charts.length > 0) {
-        chart = Highcharts.charts.find(ch => ch !== null && ch !== undefined);
-      }
-      
-      if (chart) {
-        const svg = chart.getSVG();
-        // Convert SVG to data URI (URL encoded for better compatibility)
-        const svgEncoded = encodeURIComponent(svg);
-        chartImage = 'data:image/svg+xml;charset=utf-8,' + svgEncoded;
-      } else {
-        console.warn('Chart instance not found for report export');
-      }
-    }
-  } catch (error) {
-    console.warn('Could not get chart image:', error);
-  }
-  
-  // Get data based on current mode
-  let sensorData = {};
-  let modeName = '';
-  let timeInfo = '';
-  
+  const rows = [];
+  rows.push(['Time', 'Temperature', 'Humidity', 'EtOH1', 'EtOH2', 'EtOH3', 'EtOH4']);
+
   if (modeChart === 0) {
-    // Currently mode - use real-time values
-    modeName = 'Currently';
-    timeInfo = 'Dữ liệu thời gian thực';
-    sensorData = {
-      mode: 'Currently',
-      temperature: TemperatureValue,
-      humidity: HumidityValue,
-      pressure: PressureValue,
-      etoh1: EtOH1Value,
-      etoh2: EtOH2Value,
-      etoh3: EtOH3Value,
-      etoh4: EtOH4Value,
-      timestamp: new Date().toISOString(),
-      chartMode: modeName,
-      timeInfo: timeInfo
-    };
+    // Live mode: 1 dòng hiện tại
+    rows.push([
+      now.toISOString(),
+      TemperatureValue,
+      HumidityValue,
+      EtOH1Value,
+      EtOH2Value,
+      EtOH3Value,
+      EtOH4Value,
+    ]);
   } else if (modeChart === 1) {
-    // Hourly mode - get hourly averages for selected day
-    modeName = 'Hourly';
-    if (!year || !month || !day) {
-      alert('Vui lòng chọn ngày để xuất báo cáo!');
-      return;
+    // Hourly: 24 điểm
+    const hourly = generateAll24HourSeriesData();
+    for (let i = 0; i < hourly.Temperature.length; i++) {
+      rows.push([
+        new Date(hourly.Temperature[i].x).toISOString(),
+        hourly.Temperature[i].y ?? '',
+        hourly.Humidity[i].y ?? '',
+        hourly.EtOH1[i].y ?? '',
+        hourly.EtOH2[i].y ?? '',
+        hourly.EtOH3[i].y ?? '',
+        hourly.EtOH4[i].y ?? '',
+      ]);
     }
-    timeInfo = `Ngày ${day}/${month}/${year}`;
-    
-    // Get hourly data for the selected day
-    const hourlyData = generateChartDataFromHourlyAllMetrics();
-    const hourlyValues = [];
-    
-    for (let h = 0; h < 24; h++) {
-      hourlyValues.push({
-        hour: h,
-        temperature: hourlyData.Temperature[h],
-        humidity: hourlyData.Humidity[h],
-        pressure: hourlyData.Pressure[h],
-        etoh1: hourlyData.EtOH1[h],
-        etoh2: hourlyData.EtOH2[h],
-        etoh3: hourlyData.EtOH3[h],
-        etoh4: hourlyData.EtOH4[h]
-      });
+  } else {
+    // Daily: 31 điểm
+    const daily = generateAll31DaySeriesData();
+    for (let i = 0; i < daily.Temperature.length; i++) {
+      rows.push([
+        new Date(daily.Temperature[i].x).toISOString(),
+        daily.Temperature[i].y ?? '',
+        daily.Humidity[i].y ?? '',
+        daily.EtOH1[i].y ?? '',
+        daily.EtOH2[i].y ?? '',
+        daily.EtOH3[i].y ?? '',
+        daily.EtOH4[i].y ?? '',
+      ]);
     }
-    
-    // Calculate averages
-    const avgTemp = hourlyValues.filter(v => v.temperature !== null).reduce((sum, v) => sum + v.temperature, 0) / hourlyValues.filter(v => v.temperature !== null).length || 0;
-    const avgHumidity = hourlyValues.filter(v => v.humidity !== null).reduce((sum, v) => sum + v.humidity, 0) / hourlyValues.filter(v => v.humidity !== null).length || 0;
-    const avgPressure = hourlyValues.filter(v => v.pressure !== null).reduce((sum, v) => sum + v.pressure, 0) / hourlyValues.filter(v => v.pressure !== null).length || 0;
-    const avgEtOH1 = hourlyValues.filter(v => v.etoh1 !== null).reduce((sum, v) => sum + v.etoh1, 0) / hourlyValues.filter(v => v.etoh1 !== null).length || 0;
-    const avgEtOH2 = hourlyValues.filter(v => v.etoh2 !== null).reduce((sum, v) => sum + v.etoh2, 0) / hourlyValues.filter(v => v.etoh2 !== null).length || 0;
-    const avgEtOH3 = hourlyValues.filter(v => v.etoh3 !== null).reduce((sum, v) => sum + v.etoh3, 0) / hourlyValues.filter(v => v.etoh3 !== null).length || 0;
-    const avgEtOH4 = hourlyValues.filter(v => v.etoh4 !== null).reduce((sum, v) => sum + v.etoh4, 0) / hourlyValues.filter(v => v.etoh4 !== null).length || 0;
-    
-    sensorData = {
-      mode: 'Hourly',
-      year: year,
-      month: month,
-      day: day,
-      temperature: avgTemp,
-      humidity: avgHumidity,
-      pressure: avgPressure,
-      etoh1: avgEtOH1,
-      etoh2: avgEtOH2,
-      etoh3: avgEtOH3,
-      etoh4: avgEtOH4,
-      timestamp: new Date().toISOString(),
-      chartMode: modeName,
-      timeInfo: timeInfo,
-      hourlyValues: hourlyValues
-    };
-  } else if (modeChart === 2) {
-    // Daily mode - get daily averages for selected month
-    modeName = 'Daily';
-    if (!year || !month) {
-      alert('Vui lòng chọn tháng để xuất báo cáo!');
-      return;
-    }
-    timeInfo = `Tháng ${month}/${year}`;
-    
-    // Get daily data for the selected month
-    const dailyData = generateChartDataFromDailyAllMetrics();
-    const dailyValues = [];
-    
-    for (let d = 1; d <= 31; d++) {
-      dailyValues.push({
-        day: d,
-        temperature: dailyData.Temperature[d - 1],
-        humidity: dailyData.Humidity[d - 1],
-        pressure: dailyData.Pressure[d - 1],
-        etoh1: dailyData.EtOH1[d - 1],
-        etoh2: dailyData.EtOH2[d - 1],
-        etoh3: dailyData.EtOH3[d - 1],
-        etoh4: dailyData.EtOH4[d - 1]
-      });
-    }
-    
-    // Calculate averages
-    const avgTemp = dailyValues.filter(v => v.temperature !== null).reduce((sum, v) => sum + v.temperature, 0) / dailyValues.filter(v => v.temperature !== null).length || 0;
-    const avgHumidity = dailyValues.filter(v => v.humidity !== null).reduce((sum, v) => sum + v.humidity, 0) / dailyValues.filter(v => v.humidity !== null).length || 0;
-    const avgPressure = dailyValues.filter(v => v.pressure !== null).reduce((sum, v) => sum + v.pressure, 0) / dailyValues.filter(v => v.pressure !== null).length || 0;
-    const avgEtOH1 = dailyValues.filter(v => v.etoh1 !== null).reduce((sum, v) => sum + v.etoh1, 0) / dailyValues.filter(v => v.etoh1 !== null).length || 0;
-    const avgEtOH2 = dailyValues.filter(v => v.etoh2 !== null).reduce((sum, v) => sum + v.etoh2, 0) / dailyValues.filter(v => v.etoh2 !== null).length || 0;
-    const avgEtOH3 = dailyValues.filter(v => v.etoh3 !== null).reduce((sum, v) => sum + v.etoh3, 0) / dailyValues.filter(v => v.etoh3 !== null).length || 0;
-    const avgEtOH4 = dailyValues.filter(v => v.etoh4 !== null).reduce((sum, v) => sum + v.etoh4, 0) / dailyValues.filter(v => v.etoh4 !== null).length || 0;
-    
-    sensorData = {
-      mode: 'Daily',
-      year: year,
-      month: month,
-      temperature: avgTemp,
-      humidity: avgHumidity,
-      pressure: avgPressure,
-      etoh1: avgEtOH1,
-      etoh2: avgEtOH2,
-      etoh3: avgEtOH3,
-      etoh4: avgEtOH4,
-      timestamp: new Date().toISOString(),
-      chartMode: modeName,
-      timeInfo: timeInfo,
-      dailyValues: dailyValues
-    };
   }
-  
-  // Add chart image to sensor data
-  sensorData.chartImage = chartImage;
-  
-  // Create report content
-  const reportContent = generateReportContent(sensorData);
-  
-  // Create and download report
-  downloadReport(reportContent, sensorData);
-  
-  console.log('Report exported successfully!');
+
+  const csvContent = rows.map(r => r.join(',')).join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const filename = `sensor-data-${modeName}${modeSuffix}-${dateStr}-${timeStr}.csv`;
+  if (navigator.msSaveBlob) {
+    navigator.msSaveBlob(blob, filename);
+  } else {
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+  console.log('CSV exported:', filename);
 };
 
 const generateReportContent = (data) => {
@@ -649,7 +556,6 @@ const generateReportContent = (data) => {
           <td>${String(hourData.hour).padStart(2, '0')}:00</td>
           <td>${formatValue(hourData.temperature)}</td>
           <td>${formatValue(hourData.humidity)}</td>
-          <td>${formatValue(hourData.pressure)}</td>
           <td>${formatValue(hourData.etoh1)}</td>
           <td>${formatValue(hourData.etoh2)}</td>
           <td>${formatValue(hourData.etoh3)}</td>
@@ -667,10 +573,9 @@ const generateReportContent = (data) => {
         dailyTableRows += `
           <tr>
             <td>Ngày ${dayData.day}</td>
-            <td>${formatValue(dayData.temperature)}</td>
-            <td>${formatValue(dayData.humidity)}</td>
-            <td>${formatValue(dayData.pressure)}</td>
-            <td>${formatValue(dayData.etoh1)}</td>
+          <td>${formatValue(dayData.temperature)}</td>
+          <td>${formatValue(dayData.humidity)}</td>
+          <td>${formatValue(dayData.etoh1)}</td>
             <td>${formatValue(dayData.etoh2)}</td>
             <td>${formatValue(dayData.etoh3)}</td>
             <td>${formatValue(dayData.etoh4)}</td>
@@ -914,6 +819,14 @@ const fetchRealTimeDataDaily = () => {
 let progressBars = null;
 const initProgressBars = () => {
   if (!DOM) return;
+  
+  // Kiểm tra xem ProgressBar library đã load chưa
+  if (typeof ProgressBar === 'undefined') {
+    console.warn('⚠️ ProgressBar library not loaded. Retrying in 500ms...');
+    setTimeout(initProgressBars, 500);
+    return;
+  }
+  
   const commonConfig = {
     strokeWidth: 12,
     color: 'white',
@@ -933,19 +846,20 @@ const initProgressBars = () => {
     progressBars = {
       temp: new ProgressBar.SemiCircle('#container_temperature', { ...commonConfig, text: { value: '', alignToBottom: false, className: 'progressbar_label' } }),
       humidity: new ProgressBar.Line('#container_humidity', { ...commonConfig, text: { value: '', className: 'humidity_label' } }),
-      pressure: new ProgressBar.Line('#container_pressure', { ...commonConfig, text: { value: '', className: 'pressure_label' } }),
       etoh1: new ProgressBar.Line('#container_etoh1', { ...commonConfig, text: { value: '', className: 'etoh1_label' } }),
       etoh2: new ProgressBar.Line('#container_etoh2', { ...commonConfig, text: { value: '', className: 'etoh2_label' } }),
-      etoh3: new ProgressBar.Line('#container_etoh3', { ...commonConfig, text: { value: '', className: 'etoh3_label' } })
+      etoh3: new ProgressBar.Line('#container_etoh3', { ...commonConfig, text: { value: '', className: 'etoh3_label' } }),
+      etoh4: new ProgressBar.Line('#container_etoh4', { ...commonConfig, text: { value: '', className: 'etoh4_label' } }),
     };
     progressBars.temp.animate(TemperatureValue / 100);
     progressBars.humidity.animate(HumidityValue / 100);
-    progressBars.pressure.animate(PressureValue / 100);
     progressBars.etoh1.animate(Math.min(EtOH1Value / 32767, 1)); // ADC max value is 32767
     progressBars.etoh2.animate(Math.min(EtOH2Value / 32767, 1));
     progressBars.etoh3.animate(Math.min(EtOH3Value / 32767, 1));
+    progressBars.etoh4.animate(Math.min(EtOH4Value / 32767, 1));
+    console.log('✅ Progress bars initialized successfully');
   } catch (error) {
-    console.error('Error initializing progress bars:', error);
+    console.error('❌ Error initializing progress bars:', error);
   }
 };
 
@@ -976,7 +890,6 @@ const initHighcharts = () => {
     const result = {
       Temperature: [],
       Humidity: [],
-      Pressure: [],
       EtOH1: [],
       EtOH2: [],
       EtOH3: [],
@@ -987,7 +900,6 @@ const initHighcharts = () => {
       const x = startOfToday + i * 3600 * 1000;
       result.Temperature.push({ x, y: hourlyData.Temperature[i] ?? null });
       result.Humidity.push({ x, y: hourlyData.Humidity[i] ?? null });
-      result.Pressure.push({ x, y: hourlyData.Pressure[i] ?? null });
       result.EtOH1.push({ x, y: hourlyData.EtOH1[i] ?? null });
       result.EtOH2.push({ x, y: hourlyData.EtOH2[i] ?? null });
       result.EtOH3.push({ x, y: hourlyData.EtOH3[i] ?? null });
@@ -999,7 +911,6 @@ const initHighcharts = () => {
     const result = {
       Temperature: [],
       Humidity: [],
-      Pressure: [],
       EtOH1: [],
       EtOH2: [],
       EtOH3: [],
@@ -1011,7 +922,6 @@ const initHighcharts = () => {
       const x = startDate + i * 24 * 3600 * 1000;
       result.Temperature.push({ x, y: dailyData.Temperature[i] ?? null });
       result.Humidity.push({ x, y: dailyData.Humidity[i] ?? null });
-      result.Pressure.push({ x, y: dailyData.Pressure[i] ?? null });
       result.EtOH1.push({ x, y: dailyData.EtOH1[i] ?? null });
       result.EtOH2.push({ x, y: dailyData.EtOH2[i] ?? null });
       result.EtOH3.push({ x, y: dailyData.EtOH3[i] ?? null });
@@ -1024,7 +934,6 @@ const initHighcharts = () => {
     const result = {
       Temperature: [],
       Humidity: [],
-      Pressure: [],
       EtOH1: [],
       EtOH2: [],
       EtOH3: [],
@@ -1034,7 +943,6 @@ const initHighcharts = () => {
       const x = now + i * 1000;
       result.Temperature.push({ x, y: TemperatureValue });
       result.Humidity.push({ x, y: HumidityValue });
-      result.Pressure.push({ x, y: PressureValue });
       result.EtOH1.push({ x, y: EtOH1Value });
       result.EtOH2.push({ x, y: EtOH2Value });
       result.EtOH3.push({ x, y: EtOH3Value });
@@ -1065,11 +973,10 @@ const initHighcharts = () => {
       const newDataPoints = [
         { seriesIndex: 0, y: TemperatureValue },
         { seriesIndex: 1, y: HumidityValue },
-        { seriesIndex: 2, y: PressureValue },
-        { seriesIndex: 3, y: EtOH1Value },
-        { seriesIndex: 4, y: EtOH2Value },
-        { seriesIndex: 5, y: EtOH3Value },
-        { seriesIndex: 6, y: EtOH4Value }
+        { seriesIndex: 2, y: EtOH1Value },
+        { seriesIndex: 3, y: EtOH2Value },
+        { seriesIndex: 4, y: EtOH3Value },
+        { seriesIndex: 5, y: EtOH4Value },
       ];
       newDataPoints.forEach(dataPoint => {
         const seriesTarget = chart.series[dataPoint.seriesIndex];
@@ -1171,7 +1078,6 @@ const initHighcharts = () => {
       series: [
         { name: 'Temperature (°C)', lineWidth: 2, color: 'red', data: seriesDataFunc.Temperature },
         { name: 'Humidity (%)', lineWidth: 2, color: 'blue', data: seriesDataFunc.Humidity, visible: false },
-        { name: 'Pressure (hPa)', lineWidth: 2, color: 'green', data: seriesDataFunc.Pressure, visible: false },
         { name: 'EtOH1 (Raw)', lineWidth: 2, color: 'yellow', data: seriesDataFunc.EtOH1, visible: false },
         { name: 'EtOH2 (Raw)', lineWidth: 2, color: 'purple', data: seriesDataFunc.EtOH2, visible: false },
         { name: 'EtOH3 (Raw)', lineWidth: 2, color: 'orange', data: seriesDataFunc.EtOH3, visible: false },
@@ -1193,7 +1099,6 @@ function getMonthlyDailyHourlyAverages(dataArray) {
       Array.from({ length: 24 }, () => ({
         Temperature: [],
         Humidity: [],
-        Pressure: [],
         EtOH1: [],
         EtOH2: [],
         EtOH3: [],
@@ -1209,7 +1114,6 @@ function getMonthlyDailyHourlyAverages(dataArray) {
     if (month >= 1 && month <= 12 && day >= 1 && day <= 30 && hour >= 0 && hour < 24) {
       monthlyDailyHourlyData[month][day][hour].Temperature.push(entry.Temperature);
       monthlyDailyHourlyData[month][day][hour].Humidity.push(entry.Humidity);
-      monthlyDailyHourlyData[month][day][hour].Pressure.push(entry.Pressure);
       monthlyDailyHourlyData[month][day][hour].EtOH1.push(entry.EtOH1);
       monthlyDailyHourlyData[month][day][hour].EtOH2.push(entry.EtOH2);
       monthlyDailyHourlyData[month][day][hour].EtOH3.push(entry.EtOH3);
@@ -1227,7 +1131,6 @@ function getMonthlyDailyHourlyAverages(dataArray) {
         hour: h,
         Temperature: average(hourData.Temperature),
         Humidity: average(hourData.Humidity),
-        Pressure: average(hourData.Pressure),
         EtOH1: average(hourData.EtOH1),
         EtOH2: average(hourData.EtOH2),
         EtOH3: average(hourData.EtOH3),
@@ -1246,7 +1149,6 @@ function getMonthlyDailyAverages(dataArray) {
     Array.from({ length: 31 }, () => ({
       Temperature: [],
       Humidity: [],
-      Pressure: [],
       EtOH1: [],
       EtOH2: [],
       EtOH3: [],
@@ -1260,7 +1162,6 @@ function getMonthlyDailyAverages(dataArray) {
     if (month >= 1 && month <= 12 && day >= 1 && day <= 30) {
       monthlyDailyData[month][day].Temperature.push(entry.Temperature);
       monthlyDailyData[month][day].Humidity.push(entry.Humidity);
-      monthlyDailyData[month][day].Pressure.push(entry.Pressure);
       monthlyDailyData[month][day].EtOH1.push(entry.EtOH1);
       monthlyDailyData[month][day].EtOH2.push(entry.EtOH2);
       monthlyDailyData[month][day].EtOH3.push(entry.EtOH3);
@@ -1277,7 +1178,6 @@ function getMonthlyDailyAverages(dataArray) {
         day: dayIdx,
         Temperature: average(dayData.Temperature),
         Humidity: average(dayData.Humidity),
-        Pressure: average(dayData.Pressure),
         EtOH1: average(dayData.EtOH1),
         EtOH2: average(dayData.EtOH2),
         EtOH3: average(dayData.EtOH3),
@@ -1307,15 +1207,14 @@ function generateChartDataFromHourlyAllMetrics() {
   const result = {
     Temperature: [],
     Humidity: [],
-    Pressure: [],
-    ADC1: [],
-    ADC2: [],
-    ADC3: [],
-    ADC4: []
+    EtOH1: [],
+    EtOH2: [],
+    EtOH3: [],
+    EtOH4: []
   };
   if (!year || !month || !day) return result;
   for (let h = 0; h < 24; h++) {
-    ['Temperature', 'Humidity', 'Pressure', 'EtOH1', 'EtOH2', 'EtOH3', 'EtOH4'].forEach(key => {
+    ['Temperature', 'Humidity', 'EtOH1', 'EtOH2', 'EtOH3', 'EtOH4'].forEach(key => {
       const value = getHourlyValue(month, day, h, key);
       result[key].push(value);
     });
@@ -1327,15 +1226,14 @@ function generateChartDataFromDailyAllMetrics() {
   const result = {
     Temperature: [],
     Humidity: [],
-    Pressure: [],
-    ADC1: [],
-    ADC2: [],
-    ADC3: [],
-    ADC4: []
+    EtOH1: [],
+    EtOH2: [],
+    EtOH3: [],
+    EtOH4: []
   };
   if (!year || !month) return result;
   for (let d = 1; d <= 31; d++) {
-    ['Temperature', 'Humidity', 'Pressure', 'EtOH1', 'EtOH2', 'EtOH3', 'EtOH4'].forEach(key => {
+    ['Temperature', 'Humidity', 'EtOH1', 'EtOH2', 'EtOH3', 'EtOH4'].forEach(key => {
       const value = getDailyValue(month, d, key);
       result[key].push(value);
     });
@@ -1419,7 +1317,6 @@ socket.onmessage = (event) => {
         }
         if ('Temperature' in status) TemperatureValue = parseFloat(status.Temperature);
         if ('Humidity' in status) HumidityValue = parseFloat(status.Humidity);
-        if ('Pressure' in status) PressureValue = parseFloat(status.Pressure);
         if ('EtOH1' in status) EtOH1Value = parseFloat(status.EtOH1);
         if ('EtOH2' in status) EtOH2Value = parseFloat(status.EtOH2);
         if ('EtOH3' in status) EtOH3Value = parseFloat(status.EtOH3);
@@ -1427,10 +1324,10 @@ socket.onmessage = (event) => {
         if (progressBars) {
           progressBars.temp.animate(TemperatureValue / 100);
           progressBars.humidity.animate(HumidityValue / 100);
-          progressBars.pressure.animate(PressureValue / 100);
           progressBars.etoh1.animate(Math.min(EtOH1Value / 32767, 1)); // ADC max value is 32767
           progressBars.etoh2.animate(Math.min(EtOH2Value / 32767, 1));
           progressBars.etoh3.animate(Math.min(EtOH3Value / 32767, 1));
+          progressBars.etoh4.animate(Math.min(EtOH4Value / 32767, 1));
         }
         updateUI();
         console.log('✅ Successfully applied data from server');
@@ -1637,6 +1534,41 @@ socket.onmessage = (event) => {
         // Nếu đang ở chế độ hourly, render lại biểu đồ ngay khi có dữ liệu
         if (modeChart === 1) {
           renderChart(modeChart);
+        }
+        break;
+      case 'csv-data':
+        console.log(`📊 Received CSV data: ${data.filename} (${data.count} rows)`);
+        // Xử lý dữ liệu CSV và cập nhật UI
+        if (data.data && data.data.length > 0) {
+          // Cập nhật giá trị hiện tại từ dữ liệu CSV (lấy giá trị cuối cùng)
+          const lastRow = data.data[data.data.length - 1];
+          if (lastRow.Temperature !== undefined) TemperatureValue = lastRow.Temperature;
+          if (lastRow.Humidity !== undefined) HumidityValue = lastRow.Humidity;
+          if (lastRow.EtOH1 !== undefined) EtOH1Value = lastRow.EtOH1;
+          if (lastRow.EtOH2 !== undefined) EtOH2Value = lastRow.EtOH2;
+          if (lastRow.EtOH3 !== undefined) EtOH3Value = lastRow.EtOH3;
+          if (lastRow.EtOH4 !== undefined) EtOH4Value = lastRow.EtOH4;
+          
+          // Cập nhật progress bars
+          if (progressBars) {
+            progressBars.temp.animate(TemperatureValue / 100);
+            progressBars.humidity.animate(HumidityValue / 100);
+            progressBars.etoh1.animate(Math.min(EtOH1Value / 32767, 1));
+            progressBars.etoh2.animate(Math.min(EtOH2Value / 32767, 1));
+            progressBars.etoh3.animate(Math.min(EtOH3Value / 32767, 1));
+          }
+          
+          updateUI();
+          console.log(`✅ CSV data loaded: ${data.filename}`);
+          
+          // Hiển thị thông báo
+          if (DOM && DOM.statusMessage) {
+            DOM.statusMessage.textContent = `Đã tải ${data.count} dòng dữ liệu từ ${data.filename}`;
+            DOM.statusMessage.style.color = 'green';
+            setTimeout(() => {
+              if (DOM.statusMessage) DOM.statusMessage.textContent = '';
+            }, 5000);
+          }
         }
         break;
       default:

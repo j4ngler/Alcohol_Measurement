@@ -48,6 +48,9 @@
         </div>
 
         <div>
+          <button class="sampling-btn" id="start-sampling-btn" title="Start Sampling">
+            <i class="fas fa-play"></i> Start Sampling
+          </button>
           <div class="fota-btn">FOTA</div>
         </div>
       </div>
@@ -70,27 +73,27 @@
           </div>
         </div>
         <div class="Row_2_dataWidget">
-          <div class="card card_pressure">
-            <div class="label" style="margin-top: 3px"><i class="fas fa-compress-arrows-alt"
-                style="font-size: 30px; margin-right: 8px;"></i>Pressure</div>
-            <div id="container_pressure" style="stroke: #fafafabd;"></div>
-          </div>
           <div class="card card_etoh1">
             <div class="label" style="margin-top: 3px"><i class="fas fa-flask"
                 style="font-size: 30px; margin-right: 8px;"></i>EtOH1</div>
             <div id="container_etoh1" style="stroke: #fafafabd;"></div>
           </div>
-        </div>
-        <div class="Row_3_dataWidget">
           <div class="card card_etoh2">
             <div class="label" style="margin-top: 3px"><i class="fas fa-flask"
                 style="font-size: 30px; margin-right: 8px;"></i>EtOH2</div>
             <div id="container_etoh2" style="stroke: #fafafabd;"></div>
           </div>
+        </div>
+        <div class="Row_3_dataWidget">
           <div class="card card_etoh3">
             <div class="label" style="margin-top: 3px"><i class="fas fa-flask"
                 style="font-size: 30px; margin-right: 8px;"></i>EtOH3</div>
             <div id="container_etoh3" style="stroke: #fafafabd;"></div>
+          </div>
+          <div class="card card_etoh4">
+            <div class="label" style="margin-top: 3px"><i class="fas fa-flask"
+                style="font-size: 30px; margin-right: 8px;"></i>EtOH4</div>
+            <div id="container_etoh4" style="stroke: #fafafabd;"></div>
           </div>
         </div>
       </div>
@@ -104,11 +107,11 @@
             <div class="daily-btn">Daily</div>
           </div>
           <div class="chart-export-buttons">
-            <button class="export-btn" id="export-chart-btn" title="Export Chart">
-              <i class="fas fa-download"></i> Export Chart
+            <button class="export-btn" id="export-chart-btn" title="Export CSV">
+              <i class="fas fa-download"></i> Export CSV
             </button>
-            <button class="export-btn" id="export-report-btn" title="Export Report">
-              <i class="fas fa-file-pdf"></i> Export Report
+            <button class="export-btn" id="export-report-btn" title="Export CSV">
+              <i class="fas fa-file-csv"></i> Export CSV
             </button>
           </div>
           <div class="time-chart">
@@ -175,7 +178,7 @@
 
 
   <!-- Scripts -->
-  <script src="https://rawgit.com/kimmobrunfeldt/progressbar.js/1.0.0/dist/progressbar.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/progressbar.js@1.1.0/dist/progressbar.min.js" defer></script>
   <script src="https://code.highcharts.com/highcharts.js" defer></script>
   <script src="https://code.highcharts.com/modules/exporting.js" defer></script>
   <script src="https://code.highcharts.com/modules/export-data.js" defer></script>
