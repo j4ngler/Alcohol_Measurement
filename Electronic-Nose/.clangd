@@ -1,0 +1,25 @@
+CompileFlags:
+  # ESP-IDF (CMake) generates compile_commands.json under `build/`.
+  # This lets clangd find the correct toolchain include paths (newlib, esp-idf headers, etc.)
+  CompilationDatabase: build
+  # Remove ESP-IDF/GCC specific flags that Clangd doesn't recognize
+  # These are valid for GCC/ESP-IDF but Clangd shows warnings
+  Remove:
+    - -mlongcalls
+    - -fstrict-volatile-bitfields
+    - -fno-tree-switch-conversion
+    - -mlong-calls  # Alternative form
+  
+Diagnostics:
+  # Suppress warnings about missing headers that are found via compile_commands.json
+  UnusedIncludes: None
+  MissingIncludes: None
+  # Suppress warnings about unknown compiler arguments (ESP-IDF uses GCC-specific flags)
+  Suppress:
+    - drv_unknown_argument
+    - drv_unknown_argument_with_suggestion
+  
+Index:
+  # Improve indexing performance for large codebases
+  Background: Build
+

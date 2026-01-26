@@ -168,6 +168,55 @@ menu "WiFi Config Menu"
 
 endmenu
 
+menu "DHT Sensor"
+
+    config DHT_USE
+        bool "Enable DHT sensor (DHT22/DHT11)"
+        default y
+
+    config DHT_GPIO
+        int "DHT data GPIO"
+        default 4
+        depends on DHT_USE
+        help
+            GPIO nối chân DATA của DHT (mặc định GPIO4)
+
+    config DHT_TYPE_DHT22
+        bool "Sensor type: DHT22"
+        default y
+        depends on DHT_USE
+
+    config DHT_TYPE_DHT11
+        bool "Sensor type: DHT11"
+        default n
+        depends on DHT_USE
+
+endmenu
+
+menu "Dashboard Config"
+
+    config DASHBOARD_ENABLED
+        bool "Enable Dashboard HTTP POST"
+        default y
+        help
+            Enable sending sensor data to dashboard via HTTP POST (no SD card needed)
+
+    config DASHBOARD_HOST
+        string "Dashboard host IP"
+        default "192.168.0.112"
+        depends on DASHBOARD_ENABLED
+        help
+            Dashboard server IP address
+
+    config DASHBOARD_PORT
+        int "Dashboard port"
+        default 3000
+        depends on DASHBOARD_ENABLED
+        help
+            Dashboard server HTTP port
+
+endmenu
+
 menu "MQTT Config menu"
 
     config BROKER_URI

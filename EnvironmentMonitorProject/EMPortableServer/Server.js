@@ -51,6 +51,148 @@ app.get('/', (req, res) => {
   res.sendFile(path.resolve(__dirname, 'pages/index.html'));
 });
 
+// ========== ESP32 CONFIGURATION ENDPOINTS (must be before static files) ==========
+// Endpoint để lấy ESP32 config status
+app.get('/api/esp32/config', async (req, res) => {
+  console.log(`📥 [${new Date().toISOString()}] GET /api/esp32/config received`);
+  try {
+    let esp32IP = esp32HTTPIP;
+    
+    if (!esp32IP || esp32IP === 'unknown') {
+      return res.json({ 
+        success: false, 
+        message: 'ESP32 not connected. Please ensure ESP32 has sent data at least once.',
+        esp32IP: null
+      });
+    }
+    
+    const cleanIP = esp32IP.replace(/^::ffff:/, '');
+    
+    // Simply return ESP32 IP if found (no need to ping ESP32)
+    res.json({ 
+      success: true, 
+      esp32IP: cleanIP,
+      message: 'ESP32 IP found'
+    });
+    
+  } catch (error) {
+    console.error('❌ Get ESP32 config error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Endpoint để cấu hình ESP32 dashboard IP từ dashboard server
+app.post('/api/esp32/config', async (req, res) => {
+  console.log(`📥 [${new Date().toISOString()}] POST /api/esp32/config received`);
+  try {
+    const { host, port } = req.body;
+    
+    if (!host || !port) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Missing host or port in request body' 
+      });
+    }
+    
+    // Tìm ESP32 IP
+    let esp32IP = esp32HTTPIP;
+    
+    if (!esp32IP || esp32IP === 'unknown') {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'ESP32 not connected. Please ensure ESP32 has sent data at least once.',
+        hint: 'ESP32 will register its IP automatically when it connects to WiFi.'
+      });
+    }
+    
+    // Remove IPv6 prefix if present
+    const cleanIP = esp32IP.replace(/^::ffff:/, '');
+    
+    // Forward request đến ESP32
+    const esp32ConfigUrl = `http://${cleanIP}/api/config/dashboard`;
+    const configPayload = JSON.stringify({ host, port });
+    
+    console.log(`📤 Forwarding config request to ESP32: ${esp32ConfigUrl}`);
+    console.log(`   Payload: ${configPayload}`);
+    
+    const http = require('http');
+    const url = require('url');
+    const parsedUrl = url.parse(esp32ConfigUrl);
+    
+    const options = {
+      hostname: parsedUrl.hostname,
+      port: parsedUrl.port || 80,
+      path: parsedUrl.path,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(configPayload)
+      },
+      timeout: 10000
+    };
+    
+    const esp32Req = http.request(options, (esp32Res) => {
+      let data = '';
+      
+      esp32Res.on('data', (chunk) => {
+        data += chunk;
+      });
+      
+      esp32Res.on('end', () => {
+        console.log(`✅ ESP32 config response: ${data}`);
+        try {
+          const esp32Response = JSON.parse(data);
+          if (esp32Response.status === 'success') {
+            res.json({ 
+              success: true, 
+              message: `ESP32 dashboard config updated successfully`,
+              esp32IP: cleanIP,
+              config: { host, port }
+            });
+          } else {
+            res.status(500).json({ 
+              success: false, 
+              message: `ESP32 config update failed: ${esp32Response.message || 'Unknown error'}` 
+            });
+          }
+        } catch (parseError) {
+          console.error('❌ Failed to parse ESP32 response:', parseError);
+          res.status(500).json({ 
+            success: false, 
+            message: 'Failed to parse ESP32 response' 
+          });
+        }
+      });
+    });
+    
+    esp32Req.on('error', (error) => {
+      console.error(`❌ ESP32 config request error: ${error.message}`);
+      res.status(500).json({ 
+        success: false, 
+        message: `Failed to connect to ESP32: ${error.message}`,
+        esp32IP: cleanIP
+      });
+    });
+    
+    esp32Req.on('timeout', () => {
+      console.error(`❌ ESP32 config request timeout`);
+      esp32Req.destroy();
+      res.status(504).json({ 
+        success: false, 
+        message: 'Request to ESP32 timed out',
+        esp32IP: cleanIP
+      });
+    });
+    
+    esp32Req.write(configPayload);
+    esp32Req.end();
+    
+  } catch (error) {
+    console.error('❌ ESP32 config error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 app.use(express.static('public'));
 
 // Upload firmware endpoint
@@ -690,13 +832,35 @@ let esp32HTTPIP = null;
 
 const port = 3000;
 
-app.listen(port, () => {
+// Get local IP address for logging
+const os = require('os');
+const networkInterfaces = os.networkInterfaces();
+let localIP = 'localhost';
+for (const interfaceName in networkInterfaces) {
+  const interfaces = networkInterfaces[interfaceName];
+  for (const iface of interfaces) {
+    // Skip internal (loopback) and non-IPv4 addresses
+    if (iface.family === 'IPv4' && !iface.internal) {
+      localIP = iface.address;
+      break;
+    }
+  }
+  if (localIP !== 'localhost') break;
+}
+
+// Listen on all network interfaces (0.0.0.0) to accept connections from ESP32
+app.listen(port, '0.0.0.0', () => {
   console.log(`🚀 Server is running at http://localhost:${port}`);
+  console.log(`🌐 Server is accessible at http://${localIP}:${port}`);
   console.log(`📁 CSV data folder: ${CSV_DATA_FOLDER}`);
-  console.log(`✅ ESP32 sampling endpoints registered:`);
+  console.log(`✅ ESP32 endpoints registered:`);
   console.log(`   - POST /api/esp32/start-sampling`);
   console.log(`   - GET  /api/esp32/status`);
   console.log(`   - POST /api/esp32/data`);
+  console.log(`   - POST /api/esp32/config (configure ESP32 dashboard IP)`);
+  console.log(`   - GET  /api/esp32/config (get ESP32 connection status)`);
+  console.log(`   - POST /api/esp32/register (ESP32 IP registration)`);
+  console.log(`\n💡 Configure ESP32 to use: http://${localIP}:${port}`);
 });
 
 wss.on('connection', (ws) => {

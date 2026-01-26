@@ -53,6 +53,16 @@ esp_err_t download_get_handler(httpd_req_t *req);
 
 esp_err_t delete_post_handler(httpd_req_t *req);
 
+/* API handlers for sampling control */
+esp_err_t api_start_sampling_handler(httpd_req_t *req);
+esp_err_t api_stop_sampling_handler(httpd_req_t *req);
+esp_err_t api_status_handler(httpd_req_t *req);
+
+/* API handler for dashboard configuration */
+esp_err_t api_config_dashboard_handler(httpd_req_t *req);
+esp_err_t api_config_static_ip_handler(httpd_req_t *req);
+esp_err_t config_page_handler(httpd_req_t *req);
+
 esp_err_t start_file_server(const char *base_path);
 
 #endif

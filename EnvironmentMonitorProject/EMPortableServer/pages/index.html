@@ -51,7 +51,9 @@
           <button class="sampling-btn" id="start-sampling-btn" title="Start Sampling">
             <i class="fas fa-play"></i> Start Sampling
           </button>
-          <div class="fota-btn">FOTA</div>
+          <button class="sampling-btn" id="config-esp32-btn" title="Configure ESP32" style="background: #2196F3;">
+            <i class="fas fa-cog"></i> ESP32 Config
+          </button>
         </div>
       </div>
     </div>
@@ -176,6 +178,104 @@
     </div>
   </div>
 
+  <!-- ESP32 Configuration Modal -->
+  <div id="esp32-config-modal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 500px;">
+      <div class="modal-header">
+        <h2><i class="fas fa-cog"></i> ESP32 Configuration</h2>
+        <span class="close-modal" id="close-esp32-config">&times;</span>
+      </div>
+      <div class="modal-body">
+        <div id="esp32-config-status" style="margin-bottom: 15px; padding: 10px; border-radius: 4px; display: none;"></div>
+        <form id="esp32-config-form">
+          <div style="margin-bottom: 15px;">
+            <label for="esp32-ip" style="display: block; margin-bottom: 5px; font-weight: bold;">ESP32 IP Address:</label>
+            <input type="text" id="esp32-ip" readonly style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; background: #f5f5f5;">
+            <small style="color: #666;">Auto-detected from ESP32 registration</small>
+          </div>
+          <div style="margin-bottom: 15px;">
+            <label for="dashboard-host" style="display: block; margin-bottom: 5px; font-weight: bold;">Dashboard Server IP:</label>
+            <input type="text" id="dashboard-host" placeholder="192.168.1.100" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+            <small style="color: #666;">IP address of this dashboard server</small>
+          </div>
+          <div style="margin-bottom: 15px;">
+            <label for="dashboard-port" style="display: block; margin-bottom: 5px; font-weight: bold;">Dashboard Port:</label>
+            <input type="number" id="dashboard-port" value="3000" min="1" max="65535" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+          </div>
+          <div style="display: flex; gap: 10px;">
+            <button type="submit" style="flex: 1; padding: 10px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px;">
+              <i class="fas fa-save"></i> Save Configuration
+            </button>
+            <button type="button" id="cancel-esp32-config" style="flex: 1; padding: 10px; background: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px;">
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0,0,0,0.5);
+    }
+    .modal-content {
+      background-color: #fefefe;
+      margin: 5% auto;
+      padding: 0;
+      border: 1px solid #888;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .modal-header {
+      padding: 20px;
+      background: #2196F3;
+      color: white;
+      border-radius: 8px 8px 0 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-header h2 {
+      margin: 0;
+      font-size: 20px;
+    }
+    .close-modal {
+      color: white;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .close-modal:hover {
+      opacity: 0.7;
+    }
+    .modal-body {
+      padding: 20px;
+    }
+    .success-msg {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    .error-msg {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    .info-msg {
+      background: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+  </style>
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/progressbar.js@1.1.0/dist/progressbar.min.js" defer></script>

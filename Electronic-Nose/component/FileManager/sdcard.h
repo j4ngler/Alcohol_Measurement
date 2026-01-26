@@ -1,19 +1,12 @@
-/**
- * @file sdcard.h
- * @author Nguyen Nhu Hai Long ( @long27032002 )
- * @brief 
- * @version 0.1
- * @date 2022-11-29
- * @copyright Copyright (c) 2022
- */
-#ifndef __SDCARD_H__
-#define __SDCARD_H__
+#ifndef SDCARD_H
+#define SDCARD_H
 
-#include <string.h>
 #include <stdarg.h>
 #include <esp_log.h>
 #include <sys/unistd.h>
 #include <sys/stat.h>
+#include "driver/spi_common.h"
+#include "driver/sdspi_host.h"
 #include "esp_vfs_fat.h"
 #include "sdmmc_cmd.h"
 
@@ -46,7 +39,7 @@
 }
 
 #define MOUNT_POINT "/sdcard"
-static const char mount_point[] = MOUNT_POINT;
+extern const char mount_point[];
 
 
 /**
@@ -66,8 +59,17 @@ static const char mount_point[] = MOUNT_POINT;
  * @retval ESP_OK on success.
  * @retval ESP_FAIL on fail.
  */
-esp_err_t sdcard_initialize(esp_vfs_fat_sdmmc_mount_config_t *_mount_config, sdmmc_card_t *_sdcard,
-                            sdmmc_host_t *_host, spi_bus_config_t *_bus_config, sdspi_device_config_t *_slot_config);
+/**
+ * @brief Initialize and mount SD card filesystem (SDSPI) at MOUNT_POINT.
+ *
+ * @param[in]  _mount_config Pointer to FATFS mount config.
+ * @param[out] _out_sdcard   Output pointer to sdmmc_card_t* returned by esp_vfs_fat_sdspi_mount().
+ * @param[in]  _host         Pointer to SDSPI host config (SDSPI_HOST_DEFAULT()).
+ * @param[in]  _bus_config   Pointer to SPI bus config.
+ * @param[in]  _slot_config  Pointer to SDSPI device config (SDSPI_DEVICE_CONFIG_DEFAULT()).
+ */
+esp_err_t sdcard_initialize(const esp_vfs_fat_mount_config_t *_mount_config, sdmmc_card_t **_out_sdcard,
+                            const sdmmc_host_t *_host, const spi_bus_config_t *_bus_config, sdspi_device_config_t *_slot_config);
 
 
 /**
@@ -86,7 +88,7 @@ esp_err_t sdcard_initialize(esp_vfs_fat_sdmmc_mount_config_t *_mount_config, sdm
  */
 esp_err_t sdcard_writeDataToFile(const char *nameFile, const char *format, ...);
 
-int sdcard_writeStringToFile(const char *nameFile, const char *dataStr);
+esp_err_t sdcard_writeStringToFile(const char *nameFile, const char *dataStr);
 
 /**
  * @brief Read data to file follow format.

@@ -1,5 +1,5 @@
 set(app_src sdcard.c)
-set(pre_req vfs fatfs)
+set(pre_req vfs fatfs driver sdmmc)
 idf_component_register(SRCS ${app_src}
                     INCLUDE_DIRS "."
                     REQUIRES ${pre_req})

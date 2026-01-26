@@ -32,16 +32,38 @@ esp_err_t ds3231_initialize(i2c_dev_t *dev, i2c_port_t port, gpio_num_t sda_gpio
 esp_err_t ds3231_convertTimeToString(i2c_dev_t *dev, char* timeString, const unsigned int lenghtString)
 {
     struct tm time;
-    ds3231_get_time(dev, &time);
+    esp_err_t ret = ds3231_get_time(dev, &time);
+    if (ret != ESP_OK)
+    {
+        ESP_LOGE(__func__, "Failed to get time from DS3231: %s", esp_err_to_name(ret));
+        return ESP_FAIL;
+    }
+    
 #ifdef CONFIG_RTC_TIME_SYNC
-    time.tm_mon += 1;
+    time.tm_mon += 1; // Convert from 0-11 to 1-12
 #endif
+    
+    // Validate time values to prevent invalid filenames
+    if (time.tm_mon < 1 || time.tm_mon > 12 ||
+        time.tm_mday < 1 || time.tm_mday > 31 ||
+        time.tm_hour < 0 || time.tm_hour > 23 ||
+        time.tm_min < 0 || time.tm_min > 59)
+    {
+        ESP_LOGE(__func__, "Invalid time values: mon=%d, day=%d, hour=%d, min=%d", 
+                 time.tm_mon, time.tm_mday, time.tm_hour, time.tm_min);
+        // Use default values if invalid
+        time.tm_mon = 1;
+        time.tm_mday = 1;
+        time.tm_hour = 0;
+        time.tm_min = 0;
+    }
+    
     memset(timeString, 0, lenghtString);
     int lenght = 0;
     lenght = sprintf(timeString, timeFormat3, time.tm_mon, time.tm_mday, time.tm_hour, time.tm_min);
-    if (lenght)
+    if (lenght > 0)
     {
-        ESP_LOGI(__func__, "Convert time to string success.");
+        ESP_LOGI(__func__, "Convert time to string success: %s", timeString);
         return ESP_OK;
     }
 

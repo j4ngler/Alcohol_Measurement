@@ -61,9 +61,9 @@ const initDOM = () => {
     tabBtns: document.querySelectorAll('.tab-btn'),
     tabContents: document.querySelectorAll('.tab-content')
   };
-  if (!DOM.fotaModal) console.error('fotaModal not found');
-  if (!DOM.fotaBtn) console.error('fotaBtn not found');
-  if (!DOM.fotaCloseBtn) console.error('fotaCloseBtn not found');
+  if (!DOM.fotaModal) console.warn('fotaModal not found (optional)');
+  if (!DOM.fotaBtn) console.warn('fotaBtn not found (optional - removed from UI)');
+  if (!DOM.fotaCloseBtn) console.warn('fotaCloseBtn not found (optional)');
   if (!DOM.versionList) console.error('versionlist not found');
   if (!DOM.startSamplingBtn) console.error('startSamplingBtn not found');
 
@@ -225,7 +225,140 @@ const initEventListeners = () => {
   
   // Start Sampling Button
   if (DOM.startSamplingBtn) {
-    DOM.startSamplingBtn.addEventListener('click', async () => {
+    // ESP32 Configuration Modal
+  const esp32ConfigModal = document.getElementById('esp32-config-modal');
+  const esp32ConfigBtn = document.getElementById('config-esp32-btn');
+  const closeEsp32Config = document.getElementById('close-esp32-config');
+  const cancelEsp32Config = document.getElementById('cancel-esp32-config');
+  const esp32ConfigForm = document.getElementById('esp32-config-form');
+  const esp32ConfigStatus = document.getElementById('esp32-config-status');
+  
+  // Open ESP32 config modal
+  if (esp32ConfigBtn) {
+    esp32ConfigBtn.addEventListener('click', async () => {
+      // Get current ESP32 IP
+      esp32ConfigStatus.style.display = 'none';
+      try {
+        const response = await fetch('/api/esp32/config');
+        
+        // Check if response is OK
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        // Check content type
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          throw new Error('Response is not JSON');
+        }
+        
+        const data = await response.json();
+        
+        if (data.success && data.esp32IP) {
+          document.getElementById('esp32-ip').value = data.esp32IP;
+          esp32ConfigStatus.className = 'success-msg';
+          esp32ConfigStatus.textContent = `✅ ESP32 connected: ${data.esp32IP}`;
+          esp32ConfigStatus.style.display = 'block';
+        } else {
+          document.getElementById('esp32-ip').value = 'Not connected';
+          esp32ConfigStatus.className = 'error-msg';
+          esp32ConfigStatus.textContent = `❌ ${data.message || 'ESP32 not connected. Please ensure ESP32 has sent data at least once.'}`;
+          esp32ConfigStatus.style.display = 'block';
+        }
+      } catch (error) {
+        document.getElementById('esp32-ip').value = 'Error';
+        esp32ConfigStatus.className = 'error-msg';
+        esp32ConfigStatus.textContent = `❌ Error: ${error.message}. Make sure ESP32 has sent data to dashboard at least once.`;
+        esp32ConfigStatus.style.display = 'block';
+        console.error('ESP32 config error:', error);
+      }
+      
+      // Auto-fill dashboard IP (current server IP)
+      const currentHost = window.location.hostname;
+      document.getElementById('dashboard-host').value = currentHost === 'localhost' ? '192.168.1.100' : currentHost;
+      document.getElementById('dashboard-port').value = window.location.port || '3000';
+      
+      esp32ConfigModal.style.display = 'block';
+    });
+  }
+  
+  // Close modal
+  if (closeEsp32Config) {
+    closeEsp32Config.addEventListener('click', () => {
+      esp32ConfigModal.style.display = 'none';
+      esp32ConfigStatus.style.display = 'none';
+    });
+  }
+  
+  if (cancelEsp32Config) {
+    cancelEsp32Config.addEventListener('click', () => {
+      esp32ConfigModal.style.display = 'none';
+      esp32ConfigStatus.style.display = 'none';
+    });
+  }
+  
+  // Close modal when clicking outside
+  window.addEventListener('click', (event) => {
+    if (event.target === esp32ConfigModal) {
+      esp32ConfigModal.style.display = 'none';
+      esp32ConfigStatus.style.display = 'none';
+    }
+  });
+  
+  // Handle form submission
+  if (esp32ConfigForm) {
+    esp32ConfigForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const host = document.getElementById('dashboard-host').value;
+      const port = parseInt(document.getElementById('dashboard-port').value);
+      
+      if (!host || !port) {
+        esp32ConfigStatus.className = 'error-msg';
+        esp32ConfigStatus.textContent = '❌ Please fill in all fields';
+        esp32ConfigStatus.style.display = 'block';
+        return;
+      }
+      
+      esp32ConfigStatus.className = 'info-msg';
+      esp32ConfigStatus.textContent = '⏳ Updating ESP32 configuration...';
+      esp32ConfigStatus.style.display = 'block';
+      
+      try {
+        const response = await fetch('/api/esp32/config', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ host, port })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          esp32ConfigStatus.className = 'success-msg';
+          esp32ConfigStatus.textContent = `✅ ${data.message || 'Configuration updated successfully!'}`;
+          esp32ConfigStatus.style.display = 'block';
+          
+          // Close modal after 2 seconds
+          setTimeout(() => {
+            esp32ConfigModal.style.display = 'none';
+            esp32ConfigStatus.style.display = 'none';
+          }, 2000);
+        } else {
+          esp32ConfigStatus.className = 'error-msg';
+          esp32ConfigStatus.textContent = `❌ ${data.message || 'Failed to update configuration'}`;
+          esp32ConfigStatus.style.display = 'block';
+        }
+      } catch (error) {
+        esp32ConfigStatus.className = 'error-msg';
+        esp32ConfigStatus.textContent = '❌ Network error: ' + error.message;
+        esp32ConfigStatus.style.display = 'block';
+      }
+    });
+  }
+
+  DOM.startSamplingBtn.addEventListener('click', async () => {
       await startSampling();
     });
   }
@@ -266,31 +399,38 @@ const initEventListeners = () => {
     });
   }
   
-  DOM.fotaBtn.addEventListener('click', () => {
-    isUpdatingUI = true;
-    statusProxy.StatusOTA = !statusProxy.StatusOTA;
-    DOM.fotaBtn.classList.toggle('active', statusProxy.StatusOTA);
-    if (DOM.fotaModal) {
-      DOM.fotaModal.style.display = statusProxy.StatusOTA ? "block" : "none";
-      if (statusProxy.StatusOTA) {
-        // Mở modal ở tab upload khi click FOTA
-        switchTab('upload');
-        fetchFirmwareVersions();
+  // FOTA button (optional - removed from UI but keep code for compatibility)
+  if (DOM.fotaBtn) {
+    DOM.fotaBtn.addEventListener('click', () => {
+      isUpdatingUI = true;
+      statusProxy.StatusOTA = !statusProxy.StatusOTA;
+      DOM.fotaBtn.classList.toggle('active', statusProxy.StatusOTA);
+      if (DOM.fotaModal) {
+        DOM.fotaModal.style.display = statusProxy.StatusOTA ? "block" : "none";
+        if (statusProxy.StatusOTA) {
+          // Mở modal ở tab upload khi click FOTA
+          switchTab('upload');
+          fetchFirmwareVersions();
+        }
+      } else {
+        console.error('fotaModal is null in updateUI');
       }
-    } else {
-      console.error('fotaModal is null in updateUI');
-    }
-  });
-  DOM.fotaCloseBtn.addEventListener('click', () => {
-    // if (isUploadingFirmware) {
-    //   console.warn("🚫 Không thể đóng modal khi OTA đang diễn ra.");
-    //   return;
-    // }
-    isUpdatingUI = true;
-    statusProxy.StatusOTA = false;
-    DOM.fotaBtn.classList.remove('active');
-    updateUI();
-  });
+    });
+  }
+  
+  if (DOM.fotaCloseBtn) {
+    DOM.fotaCloseBtn.addEventListener('click', () => {
+      // if (isUploadingFirmware) {
+      //   console.warn("🚫 Không thể đóng modal khi OTA đang diễn ra.");
+      //   return;
+      // }
+      isUpdatingUI = true;
+      statusProxy.StatusOTA = false;
+      if (DOM.fotaBtn) DOM.fotaBtn.classList.remove('active');
+      updateUI();
+    });
+  }
+  
   window.addEventListener('click', (event) => {
     // Click ra ngoài vùng modal-content sẽ đóng modal
     if (DOM.fotaModal && DOM.fotaContent && event.target === DOM.fotaModal) {
@@ -300,7 +440,7 @@ const initEventListeners = () => {
       // }
       isUpdatingUI = true;
       statusProxy.StatusOTA = false;
-      DOM.fotaBtn.classList.remove('active');
+      if (DOM.fotaBtn) DOM.fotaBtn.classList.remove('active');
       updateUI();
     }
   });
