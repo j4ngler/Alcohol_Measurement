@@ -123,8 +123,9 @@ static void check_wifi_status(void);
 #if CONFIG_DASHBOARD_ENABLED
 static esp_err_t http_event_handler(esp_http_client_event_t *evt);
 esp_err_t save_dashboard_config_to_nvs(const char *host, int port);  // Not static - used by FileServer.c
-void trigger_dashboard_registration(void);  // Not static - used by FileServer.c to trigger re-registration
 #endif
+// Always declare this function to ensure linking works, even when CONFIG_DASHBOARD_ENABLED is disabled
+void trigger_dashboard_registration_main(void);  // Not static - used by FileServer.c wrapper to trigger re-registration
 
 // Chu kỳ đọc cảm biến (DHT22 yêu cầu tối thiểu ~2s giữa 2 lần đọc)
 #define PERIOD_GET_DATA_FROM_SENSOR (TickType_t)(2000 / portTICK_PERIOD_MS)
@@ -880,13 +881,16 @@ static void WiFi_eventHandler( void *argument,  esp_event_base_t event_base, int
             }
 #endif
 
-#if CONFIG_DASHBOARD_ENABLED
 /**
  * @brief Trigger dashboard registration after config update
  * This function can be called from FileServer.c after saving new config
+ * Note: Renamed to trigger_dashboard_registration_main to avoid conflict with wrapper in FileServer.c
+ * Always defined to ensure linking works, even when CONFIG_DASHBOARD_ENABLED is disabled
+ * This function will override the weak stub in FileServer.c
  */
-void trigger_dashboard_registration(void)
+void trigger_dashboard_registration_main(void)
 {
+#if CONFIG_DASHBOARD_ENABLED
     // Load fresh config from NVS
     char dashboard_host_temp[64];
     int dashboard_port_temp;
@@ -940,8 +944,11 @@ void trigger_dashboard_registration(void)
     } else {
         ESP_LOGE(TAG, "❌ Failed to initialize HTTP client for registration");
     }
-}
+#else
+    // Stub function when dashboard is disabled - do nothing
+    ESP_LOGD(TAG, "Dashboard registration triggered but CONFIG_DASHBOARD_ENABLED is not enabled");
 #endif
+}
 
 #ifdef CONFIG_RTC_TIME_SYNC
         if (sntp_syncTimeTask_handle == NULL)

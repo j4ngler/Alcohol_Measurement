@@ -81,6 +81,44 @@ app.get('/api/esp32/config', async (req, res) => {
   }
 });
 
+// Endpoint để set ESP32 IP manually (khi ESP32 chưa tự đăng ký được)
+app.post('/api/esp32/set-ip', express.json(), (req, res) => {
+  console.log(`📥 [${new Date().toISOString()}] POST /api/esp32/set-ip received`);
+  try {
+    const { ip } = req.body;
+    
+    if (!ip) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Missing IP address in request body' 
+      });
+    }
+    
+    // Validate IP format (simple validation)
+    const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
+    if (!ipRegex.test(ip)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Invalid IP address format' 
+      });
+    }
+    
+    const cleanIP = ip.replace(/^::ffff:/, '');
+    esp32HTTPIP = cleanIP;
+    console.log(`✅ ESP32 IP manually set to: ${esp32HTTPIP}`);
+    
+    res.json({ 
+      success: true, 
+      message: 'ESP32 IP set successfully',
+      esp32IP: cleanIP
+    });
+    
+  } catch (error) {
+    console.error('❌ Set ESP32 IP error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // Endpoint để cấu hình ESP32 dashboard IP từ dashboard server
 app.post('/api/esp32/config', async (req, res) => {
   console.log(`📥 [${new Date().toISOString()}] POST /api/esp32/config received`);

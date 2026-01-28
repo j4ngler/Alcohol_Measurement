@@ -2,6 +2,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "esp_log.h"
+#include "sdkconfig.h"
 
 // Tag for this component
 static const char *TAG = "FileServer";
@@ -10,6 +11,29 @@ static const char *TAG = "FileServer";
 extern EventGroupHandle_t sampling_control_event;
 extern TaskHandle_t getDataFromSensorTask_handle;
 #define START_SAMPLING_BIT BIT1
+
+// Weak stub function for dashboard registration (will be overridden by main.c if defined)
+// This ensures the symbol always exists for linking
+__attribute__((weak)) void trigger_dashboard_registration_main(void)
+{
+    // Weak stub - do nothing by default
+    // This will be overridden by the actual implementation in main.c if it exists
+    ESP_LOGD(TAG, "trigger_dashboard_registration_main called but not implemented (weak stub)");
+}
+
+// Wrapper function for trigger_dashboard_registration
+// Always defined to ensure linking works
+void trigger_dashboard_registration(void)
+{
+    #if defined(CONFIG_DASHBOARD_ENABLED) && CONFIG_DASHBOARD_ENABLED
+    // Call function from main.c when dashboard is enabled
+    // If main.c defines this function, it will override the weak stub above
+    trigger_dashboard_registration_main();
+    #else
+    // Stub function - do nothing when dashboard is not enabled
+    ESP_LOGD(TAG, "Dashboard registration triggered but CONFIG_DASHBOARD_ENABLED is not enabled");
+    #endif
+}
 
 /* Handler to redirect incoming GET request for /index.html to /
  * This can be overridden by uploading file with same name */
@@ -496,13 +520,13 @@ esp_err_t api_config_dashboard_handler(httpd_req_t *req)
     
     // Save to NVS
     extern esp_err_t save_dashboard_config_to_nvs(const char *host, int port);
-    extern void trigger_dashboard_registration(void);  // From main.c
     esp_err_t err = save_dashboard_config_to_nvs(host, port);
     
     if (err == ESP_OK) {
         ESP_LOGI(TAG, "✅ Dashboard config updated successfully");
         
         // Trigger re-registration with new config
+        // Always call wrapper function which handles CONFIG_DASHBOARD_ENABLED internally
         trigger_dashboard_registration();
         
         httpd_resp_set_type(req, "application/json");
@@ -519,6 +543,39 @@ esp_err_t api_config_dashboard_handler(httpd_req_t *req)
         snprintf(error_msg, sizeof(error_msg), "{\"status\":\"error\",\"message\":\"Failed to save config: %s\"}", esp_err_to_name(err));
         httpd_resp_sendstr(req, error_msg);
     }
+    
+    return ESP_OK;
+}
+
+/* API handler to update static IP configuration */
+esp_err_t api_config_static_ip_handler(httpd_req_t *req)
+{
+    char content[256];
+    int ret, remaining = req->content_len;
+    
+    if (remaining >= sizeof(content)) {
+        ESP_LOGE(TAG, "Content too long");
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Content too long");
+        return ESP_FAIL;
+    }
+    
+    ret = httpd_req_recv(req, content, remaining);
+    if (ret <= 0) {
+        if (ret == HTTPD_SOCK_ERR_TIMEOUT) {
+            httpd_resp_send_408(req);
+        }
+        return ESP_FAIL;
+    }
+    content[ret] = '\0';
+    
+    ESP_LOGI(TAG, "Received static IP config: %s (length: %d)", content, ret);
+    
+    // Parse JSON: {"staticIp":"192.168.1.100","staticNetmask":"255.255.255.0","staticGateway":"192.168.1.1"}
+    // For now, just acknowledge the request (static IP configuration can be implemented later)
+    ESP_LOGW(TAG, "⚠️ Static IP configuration received but not yet implemented");
+    
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_sendstr(req, "{\"status\":\"info\",\"message\":\"Static IP configuration received but not yet implemented\"}");
     
     return ESP_OK;
 }
