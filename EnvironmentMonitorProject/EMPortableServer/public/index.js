@@ -233,12 +233,11 @@ const initEventListeners = () => {
   const esp32ConfigForm = document.getElementById('esp32-config-form');
   const esp32ConfigStatus = document.getElementById('esp32-config-status');
   
-  // Open ESP32 config modal
+  // Open ESP32 config page directly
   if (esp32ConfigBtn) {
     esp32ConfigBtn.addEventListener('click', async () => {
-      // Get current ESP32 IP
-      esp32ConfigStatus.style.display = 'none';
       try {
+        // Get current ESP32 IP
         const response = await fetch('/api/esp32/config');
         
         // Check if response is OK
@@ -255,30 +254,18 @@ const initEventListeners = () => {
         const data = await response.json();
         
         if (data.success && data.esp32IP) {
-          document.getElementById('esp32-ip').value = data.esp32IP;
-          esp32ConfigStatus.className = 'success-msg';
-          esp32ConfigStatus.textContent = `✅ ESP32 connected: ${data.esp32IP}`;
-          esp32ConfigStatus.style.display = 'block';
+          // Open ESP32 config page in new tab
+          const esp32ConfigUrl = `http://${data.esp32IP}/config`;
+          window.open(esp32ConfigUrl, '_blank');
+          console.log(`✅ Opening ESP32 config page: ${esp32ConfigUrl}`);
         } else {
-          document.getElementById('esp32-ip').value = 'Not connected';
-          esp32ConfigStatus.className = 'error-msg';
-          esp32ConfigStatus.textContent = `❌ ${data.message || 'ESP32 not connected. Please ensure ESP32 has sent data at least once.'}`;
-          esp32ConfigStatus.style.display = 'block';
+          // Show error message if ESP32 not connected
+          alert(`❌ ${data.message || 'ESP32 not connected. Please ensure ESP32 has sent data at least once.'}`);
         }
       } catch (error) {
-        document.getElementById('esp32-ip').value = 'Error';
-        esp32ConfigStatus.className = 'error-msg';
-        esp32ConfigStatus.textContent = `❌ Error: ${error.message}. Make sure ESP32 has sent data to dashboard at least once.`;
-        esp32ConfigStatus.style.display = 'block';
+        alert(`❌ Error: ${error.message}. Make sure ESP32 has sent data to dashboard at least once.`);
         console.error('ESP32 config error:', error);
       }
-      
-      // Auto-fill dashboard IP (current server IP)
-      const currentHost = window.location.hostname;
-      document.getElementById('dashboard-host').value = currentHost === 'localhost' ? '192.168.1.100' : currentHost;
-      document.getElementById('dashboard-port').value = window.location.port || '3000';
-      
-      esp32ConfigModal.style.display = 'block';
     });
   }
   
@@ -967,7 +954,8 @@ const initProgressBars = () => {
     return;
   }
   
-  const commonConfig = {
+  // Config cho Humidity (%)
+  const humidityConfig = {
     strokeWidth: 12,
     color: 'white',
     trailColor: 'rgba(255,255,255, 0.4)',
@@ -978,25 +966,37 @@ const initProgressBars = () => {
     step: (state, bar) => {
       bar.path.setAttribute('stroke', state.color);
       const value = Math.round(bar.value() * 100);
-      bar.setText(value || '0');
+      bar.setText(value + '%' || '0%');
       bar.text.style.color = state.color;
     }
   };
+
+  // Config cho Temperature (°C) - max 100°C
+  const tempConfig = {
+    strokeWidth: 12,
+    color: 'white',
+    trailColor: 'rgba(255,255,255, 0.4)',
+    trailWidth: 12,
+    easing: 'easeInOut',
+    duration: 1400,
+    svgStyle: { width: '100%', height: '100%' },
+    step: (state, bar) => {
+      bar.path.setAttribute('stroke', state.color);
+      const value = Math.round(bar.value() * 100); // bar.value() là tỷ lệ 0-1, nhân 100 để ra °C
+      bar.setText(value + '°C' || '0°C');
+      bar.text.style.color = state.color;
+    }
+  };
+
   try {
     progressBars = {
-      temp: new ProgressBar.SemiCircle('#container_temperature', { ...commonConfig, text: { value: '', alignToBottom: false, className: 'progressbar_label' } }),
-      humidity: new ProgressBar.Line('#container_humidity', { ...commonConfig, text: { value: '', className: 'humidity_label' } }),
-      etoh1: new ProgressBar.Line('#container_etoh1', { ...commonConfig, text: { value: '', className: 'etoh1_label' } }),
-      etoh2: new ProgressBar.Line('#container_etoh2', { ...commonConfig, text: { value: '', className: 'etoh2_label' } }),
-      etoh3: new ProgressBar.Line('#container_etoh3', { ...commonConfig, text: { value: '', className: 'etoh3_label' } }),
-      etoh4: new ProgressBar.Line('#container_etoh4', { ...commonConfig, text: { value: '', className: 'etoh4_label' } }),
+      temp: new ProgressBar.SemiCircle('#container_temperature', { ...tempConfig, text: { value: '', alignToBottom: false, className: 'progressbar_label' } }),
+      humidity: new ProgressBar.Line('#container_humidity', { ...humidityConfig, text: { value: '', className: 'humidity_label' } }),
     };
+    // Temperature: giá trị trực tiếp là °C, chia cho 100 để normalize (max 100°C)
     progressBars.temp.animate(TemperatureValue / 100);
+    // Humidity: giá trị trực tiếp là %, chia cho 100 để normalize
     progressBars.humidity.animate(HumidityValue / 100);
-    progressBars.etoh1.animate(Math.min(EtOH1Value / 32767, 1)); // ADC max value is 32767
-    progressBars.etoh2.animate(Math.min(EtOH2Value / 32767, 1));
-    progressBars.etoh3.animate(Math.min(EtOH3Value / 32767, 1));
-    progressBars.etoh4.animate(Math.min(EtOH4Value / 32767, 1));
     console.log('✅ Progress bars initialized successfully');
   } catch (error) {
     console.error('❌ Error initializing progress bars:', error);
@@ -1462,12 +1462,10 @@ socket.onmessage = (event) => {
         if ('EtOH3' in status) EtOH3Value = parseFloat(status.EtOH3);
         if ('EtOH4' in status) EtOH4Value = parseFloat(status.EtOH4);
         if (progressBars) {
+          // Temperature: giá trị trực tiếp là °C, chia cho 100 để normalize (max 100°C)
           progressBars.temp.animate(TemperatureValue / 100);
+          // Humidity: giá trị trực tiếp là %, chia cho 100 để normalize
           progressBars.humidity.animate(HumidityValue / 100);
-          progressBars.etoh1.animate(Math.min(EtOH1Value / 32767, 1)); // ADC max value is 32767
-          progressBars.etoh2.animate(Math.min(EtOH2Value / 32767, 1));
-          progressBars.etoh3.animate(Math.min(EtOH3Value / 32767, 1));
-          progressBars.etoh4.animate(Math.min(EtOH4Value / 32767, 1));
         }
         updateUI();
         console.log('✅ Successfully applied data from server');
@@ -1691,11 +1689,10 @@ socket.onmessage = (event) => {
           
           // Cập nhật progress bars
           if (progressBars) {
+            // Temperature: giá trị trực tiếp là °C, chia cho 100 để normalize (max 100°C)
             progressBars.temp.animate(TemperatureValue / 100);
+            // Humidity: giá trị trực tiếp là %, chia cho 100 để normalize
             progressBars.humidity.animate(HumidityValue / 100);
-            progressBars.etoh1.animate(Math.min(EtOH1Value / 32767, 1));
-            progressBars.etoh2.animate(Math.min(EtOH2Value / 32767, 1));
-            progressBars.etoh3.animate(Math.min(EtOH3Value / 32767, 1));
           }
           
           updateUI();

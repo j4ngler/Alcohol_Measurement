@@ -9,8 +9,11 @@ static const char *TAG = "FileServer";
 
 // External references (defined in main.c)
 extern EventGroupHandle_t sampling_control_event;
-extern TaskHandle_t getDataFromSensorTask_handle;
+extern TaskHandle_t getDataFromSensorTask_handle;  // Used in api_status_handler
 #define START_SAMPLING_BIT BIT1
+
+// External function for saving static IP config (defined in main.c)
+extern esp_err_t save_static_ip_config_to_nvs(uint8_t enabled, const char *ip, const char *netmask, const char *gateway);
 
 // Weak stub function for dashboard registration (will be overridden by main.c if defined)
 // This ensures the symbol always exists for linking
@@ -401,8 +404,6 @@ esp_err_t api_start_sampling_handler(httpd_req_t *req)
 /* API handler to stop sampling */
 esp_err_t api_stop_sampling_handler(httpd_req_t *req)
 {
-    extern TaskHandle_t getDataFromSensorTask_handle;
-    
     // Note: Stopping is handled by the sampling task itself after completion
     ESP_LOGI(TAG, "📊 Stop command received (sampling will complete current cycle)");
     
@@ -414,8 +415,6 @@ esp_err_t api_stop_sampling_handler(httpd_req_t *req)
 /* API handler to get system status */
 esp_err_t api_status_handler(httpd_req_t *req)
 {
-    extern TaskHandle_t getDataFromSensorTask_handle;
-    
     char status_json[256];
     bool is_sampling = (getDataFromSensorTask_handle != NULL);
     
@@ -451,14 +450,16 @@ esp_err_t api_config_dashboard_handler(httpd_req_t *req)
     
     ESP_LOGI(TAG, "Received dashboard config: %s (length: %d)", content, ret);
     
-    // Parse JSON: {"host":"192.168.1.100","port":3000}
+    // Parse JSON: {"host":"dashboard.local" or "192.168.1.100","port":3000}
+    // Note: Host can be either hostname (e.g., "dashboard.local") or IP address (e.g., "192.168.1.100")
+    // ESP-IDF HTTP client will automatically resolve hostname to IP via DNS
     // Simple JSON parsing (cJSON would be better but keeping it simple)
     char *host_start = strstr(content, "\"host\"");
     char *port_start = strstr(content, "\"port\"");
     
     if (!host_start || !port_start) {
         ESP_LOGE(TAG, "Invalid JSON format - missing host or port");
-        ESP_LOGE(TAG, "Expected format: {\"host\":\"IP\",\"port\":PORT}");
+        ESP_LOGE(TAG, "Expected format: {\"host\":\"hostname_or_ip\",\"port\":PORT}");
         httpd_resp_set_type(req, "application/json");
         httpd_resp_sendstr(req, "{\"status\":\"error\",\"message\":\"Invalid JSON format - missing host or port\"}");
         return ESP_FAIL;
@@ -530,12 +531,12 @@ esp_err_t api_config_dashboard_handler(httpd_req_t *req)
         trigger_dashboard_registration();
         
         httpd_resp_set_type(req, "application/json");
-        httpd_resp_sendstr(req, "{\"status\":\"success\",\"message\":\"Dashboard config updated\",\"host\":\"");
-        httpd_resp_sendstr_chunk(req, host);
-        char port_str[16];
-        snprintf(port_str, sizeof(port_str), "\",\"port\":%d}", port);
-        httpd_resp_sendstr_chunk(req, port_str);
-        httpd_resp_sendstr_chunk(req, NULL);
+        // Create complete JSON string to avoid parsing errors
+        char json_response[256];
+        snprintf(json_response, sizeof(json_response), 
+                 "{\"status\":\"success\",\"message\":\"Dashboard config updated\",\"host\":\"%s\",\"port\":%d}", 
+                 host, port);
+        httpd_resp_sendstr(req, json_response);
     } else {
         ESP_LOGE(TAG, "❌ Failed to save dashboard config to NVS: %s (0x%x)", esp_err_to_name(err), err);
         httpd_resp_set_type(req, "application/json");
@@ -550,12 +551,13 @@ esp_err_t api_config_dashboard_handler(httpd_req_t *req)
 /* API handler to update static IP configuration */
 esp_err_t api_config_static_ip_handler(httpd_req_t *req)
 {
-    char content[256];
+    char content[512];
     int ret, remaining = req->content_len;
     
     if (remaining >= sizeof(content)) {
         ESP_LOGE(TAG, "Content too long");
-        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Content too long");
+        httpd_resp_set_type(req, "application/json");
+        httpd_resp_sendstr(req, "{\"status\":\"error\",\"message\":\"Content too long\"}");
         return ESP_FAIL;
     }
     
@@ -570,12 +572,111 @@ esp_err_t api_config_static_ip_handler(httpd_req_t *req)
     
     ESP_LOGI(TAG, "Received static IP config: %s (length: %d)", content, ret);
     
-    // Parse JSON: {"staticIp":"192.168.1.100","staticNetmask":"255.255.255.0","staticGateway":"192.168.1.1"}
-    // For now, just acknowledge the request (static IP configuration can be implemented later)
-    ESP_LOGW(TAG, "⚠️ Static IP configuration received but not yet implemented");
+    // Parse JSON: {"enabled":true/false,"ip":"192.168.1.100","netmask":"255.255.255.0","gateway":"192.168.1.1"}
+    uint8_t enabled = 0;
+    char ip[16] = {0};
+    char netmask[16] = {0};
+    char gateway[16] = {0};
     
+    // Check if enabled field exists
+    char *enabled_str = strstr(content, "\"enabled\"");
+    if (enabled_str) {
+        char *enabled_value = strchr(enabled_str + 9, ':');
+        if (enabled_value) {
+            enabled_value++;
+            while (*enabled_value == ' ') enabled_value++;
+            if (strncmp(enabled_value, "true", 4) == 0) {
+                enabled = 1;
+            }
+        }
+    }
+    
+    if (enabled) {
+        // Extract IP
+        char *ip_start = strstr(content, "\"ip\"");
+        if (ip_start) {
+            char *ip_quote = strchr(ip_start + 4, '"');
+            if (ip_quote) {
+                char *ip_end = strchr(ip_quote + 1, '"');
+                if (ip_end) {
+                    int ip_len = ip_end - ip_quote - 1;
+                    if (ip_len > 0 && ip_len < sizeof(ip)) {
+                        memcpy(ip, ip_quote + 1, ip_len);
+                        ip[ip_len] = '\0';
+                    }
+                }
+            }
+        }
+        
+        // Extract netmask
+        char *netmask_start = strstr(content, "\"netmask\"");
+        if (netmask_start) {
+            char *netmask_quote = strchr(netmask_start + 9, '"');
+            if (netmask_quote) {
+                char *netmask_end = strchr(netmask_quote + 1, '"');
+                if (netmask_end) {
+                    int netmask_len = netmask_end - netmask_quote - 1;
+                    if (netmask_len > 0 && netmask_len < sizeof(netmask)) {
+                        memcpy(netmask, netmask_quote + 1, netmask_len);
+                        netmask[netmask_len] = '\0';
+                    }
+                }
+            }
+        }
+        
+        // Extract gateway
+        char *gateway_start = strstr(content, "\"gateway\"");
+        if (gateway_start) {
+            char *gateway_quote = strchr(gateway_start + 9, '"');
+            if (gateway_quote) {
+                char *gateway_end = strchr(gateway_quote + 1, '"');
+                if (gateway_end) {
+                    int gateway_len = gateway_end - gateway_quote - 1;
+                    if (gateway_len > 0 && gateway_len < sizeof(gateway)) {
+                        memcpy(gateway, gateway_quote + 1, gateway_len);
+                        gateway[gateway_len] = '\0';
+                    }
+                }
+            }
+        }
+        
+        // Validate required fields
+        if (strlen(ip) == 0 || strlen(netmask) == 0 || strlen(gateway) == 0) {
+            ESP_LOGE(TAG, "Missing required fields: ip=%s, netmask=%s, gateway=%s", ip, netmask, gateway);
+            httpd_resp_set_type(req, "application/json");
+            httpd_resp_sendstr(req, "{\"status\":\"error\",\"message\":\"Missing required fields (ip, netmask, gateway)\"}");
+            return ESP_FAIL;
+        }
+        
+        ESP_LOGI(TAG, "Parsed static IP config: enabled=%d, ip=%s, netmask=%s, gateway=%s", enabled, ip, netmask, gateway);
+    } else {
+        ESP_LOGI(TAG, "Static IP disabled");
+    }
+    
+    // Save to NVS
+    esp_err_t err = save_static_ip_config_to_nvs(enabled, ip, netmask, gateway);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to save static IP config to NVS: %s", esp_err_to_name(err));
+        httpd_resp_set_type(req, "application/json");
+        char json_response[256];
+        snprintf(json_response, sizeof(json_response), 
+                 "{\"status\":\"error\",\"message\":\"Failed to save static IP config: %s\"}", 
+                 esp_err_to_name(err));
+        httpd_resp_sendstr(req, json_response);
+        return ESP_FAIL;
+    }
+    
+    ESP_LOGI(TAG, "✅ Static IP config saved successfully");
     httpd_resp_set_type(req, "application/json");
-    httpd_resp_sendstr(req, "{\"status\":\"info\",\"message\":\"Static IP configuration received but not yet implemented\"}");
+    if (enabled) {
+        char json_response[256];
+        snprintf(json_response, sizeof(json_response), 
+                 "{\"status\":\"success\",\"message\":\"Static IP config saved\",\"enabled\":true,\"ip\":\"%s\",\"netmask\":\"%s\",\"gateway\":\"%s\"}", 
+                 ip, netmask, gateway);
+        httpd_resp_sendstr(req, json_response);
+    } else {
+        httpd_resp_sendstr(req, "{\"status\":\"success\",\"message\":\"Static IP disabled\",\"enabled\":false}");
+    }
     
     return ESP_OK;
 }
@@ -603,8 +704,9 @@ esp_err_t config_page_handler(httpd_req_t *req)
         "<form id='configForm'>"
         "<h2>📡 Dashboard Server</h2>"
         "<div class='form-group'>"
-        "<label for='host'>Dashboard Server IP:</label>"
-        "<input type='text' id='host' name='host' placeholder='192.168.1.100' required>"
+        "<label for='host'>Dashboard Server (Hostname hoặc IP):</label>"
+        "<input type='text' id='host' name='host' placeholder='dashboard.local hoặc 192.168.1.100' required>"
+        "<small style='color:#666;font-size:12px;'>Có thể nhập hostname (ví dụ: dashboard.local) hoặc IP address (ví dụ: 192.168.1.100)</small>"
         "</div>"
         "<div class='form-group'>"
         "<label for='port'>Port:</label>"
@@ -725,6 +827,12 @@ esp_err_t start_file_server(const char *base_path)
 
     httpd_handle_t server = NULL;
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+
+    /* Note: HTTP header size limits are configured via menuconfig:
+     * CONFIG_HTTPD_MAX_URI_LEN and CONFIG_HTTPD_MAX_REQ_HDR_LEN
+     * To increase limits, run: idf.py menuconfig -> Component config -> HTTP Server
+     * Current defaults: max_uri_len=512, max_req_hdr_len=512
+     */
 
     /* Use the URI wildcard matching function in order to
      * allow the same handler to respond to multiple different

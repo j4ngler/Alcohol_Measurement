@@ -91,9 +91,9 @@ static char dashboard_host[64] = CONFIG_DASHBOARD_HOST;
 static int dashboard_port = CONFIG_DASHBOARD_PORT;
 
 /**
- * @brief Get dashboard host and port (from NVS or CONFIG)
+ * @brief Get dashboard hostname/IP and port (from NVS or CONFIG)
  * 
- * @param host Output buffer for host IP
+ * @param host Output buffer for hostname or IP address
  * @param host_size Size of host buffer
  * @param port Output pointer for port
  */
@@ -202,12 +202,12 @@ const uint8_t addresses[CONFIG_ADS111X_DEVICE_COUNT] = {
 #define NVS_KEY_PASSWORD "password"
 
 // NVS namespace và keys cho Dashboard config
-#define NVS_NAMESPACE_DASHBOARD "dashboard_config"
+#define NVS_NAMESPACE_DASHBOARD "dashboard"
 #define NVS_KEY_DASHBOARD_HOST "host"
 #define NVS_KEY_DASHBOARD_PORT "port"
 
 // NVS namespace và keys cho Static IP config
-#define NVS_NAMESPACE_STATIC_IP "static_ip_config"
+#define NVS_NAMESPACE_STATIC_IP "staticip"
 #define NVS_KEY_STATIC_IP_ENABLED "enabled"
 #define NVS_KEY_STATIC_IP "ip"
 #define NVS_KEY_STATIC_NETMASK "netmask"
@@ -296,7 +296,8 @@ static esp_err_t load_wifi_config_from_nvs(char *ssid, size_t ssid_size, char *p
 /**
  * @brief Lưu Dashboard config (host và port) vào NVS
  * 
- * @param host Dashboard server IP address
+ * @param host Dashboard server hostname hoặc IP address (ví dụ: "dashboard.local" hoặc "192.168.1.100")
+ *             ESP-IDF HTTP client sẽ tự động resolve hostname thành IP qua DNS
  * @param port Dashboard server port
  * @return esp_err_t ESP_OK nếu thành công
  */
@@ -330,12 +331,23 @@ esp_err_t save_dashboard_config_to_nvs(const char *host, int port)
     err = nvs_commit(nvs_handle);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Error committing dashboard config to NVS: %s", esp_err_to_name(err));
-    } else {
-        ESP_LOGI(TAG, "✅ Dashboard config saved to NVS: %s:%d", host, port);
+        nvs_close(nvs_handle);
+        return err;
     }
     
+    ESP_LOGI(TAG, "✅ Dashboard config saved to NVS: %s:%d", host, port);
+    
+    // Update global variables immediately after commit
+    strncpy(dashboard_host, host, sizeof(dashboard_host) - 1);
+    dashboard_host[sizeof(dashboard_host) - 1] = '\0';
+    dashboard_port = port;
+    
     nvs_close(nvs_handle);
-    return err;
+    
+    // Small delay to ensure NVS is fully flushed
+    vTaskDelay(pdMS_TO_TICKS(100));
+    
+    return ESP_OK;
 }
 
 /**
@@ -697,18 +709,33 @@ static void WiFi_eventHandler( void *argument,  esp_event_base_t event_base, int
             switch (event->reason) {
                 case WIFI_REASON_NO_AP_FOUND:
                     ESP_LOGW(__func__, "Reason: NO_AP_FOUND - Cannot find AP with SSID '%s'", event->ssid);
+                    ESP_LOGW(__func__, "   → Check if WiFi router is powered on and SSID is correct");
                     break;
                 case WIFI_REASON_AUTH_FAIL:
                     ESP_LOGW(__func__, "Reason: AUTH_FAIL - Authentication failed. Check password!");
+                    ESP_LOGW(__func__, "   → Password may be incorrect or WiFi security type changed");
                     break;
                 case WIFI_REASON_ASSOC_FAIL:
                     ESP_LOGW(__func__, "Reason: ASSOC_FAIL - Association failed");
+                    ESP_LOGW(__func__, "   → Router may be rejecting connection or signal too weak");
                     break;
                 case WIFI_REASON_HANDSHAKE_TIMEOUT:
                     ESP_LOGW(__func__, "Reason: HANDSHAKE_TIMEOUT - Handshake timeout");
+                    ESP_LOGW(__func__, "   → Network may be busy or signal too weak");
+                    break;
+                case 15:  // WIFI_REASON_4WAY_HANDSHAKE_TIMEOUT
+                    ESP_LOGW(__func__, "Reason: 4WAY_HANDSHAKE_TIMEOUT (15) - 4-way handshake timeout");
+                    ESP_LOGW(__func__, "   → Password may be incorrect or WiFi security mismatch");
+                    ESP_LOGW(__func__, "   → Try: Check password, move ESP32 closer to router");
+                    break;
+                case 205:  // WIFI_REASON_BEACON_TIMEOUT
+                    ESP_LOGW(__func__, "Reason: BEACON_TIMEOUT (205) - No beacon received from AP");
+                    ESP_LOGW(__func__, "   → Signal too weak or router too far");
+                    ESP_LOGW(__func__, "   → Try: Move ESP32 closer to router, check router power");
                     break;
                 default:
                     ESP_LOGW(__func__, "Reason: Unknown (%d)", event->reason);
+                    ESP_LOGW(__func__, "   → Check ESP-IDF documentation for reason code %d", event->reason);
                     break;
             }
             
@@ -745,10 +772,14 @@ static void WiFi_eventHandler( void *argument,  esp_event_base_t event_base, int
                         xTaskCreate(smartConfig_task, "smartconfig_task", 1024 * 4, NULL, 15, &smartConfigTask_handle);
                     }
                 } else {
-                    // Retry kết nối
+                    // Retry kết nối với delay để tránh spam
                     ESP_LOGI(__func__, "Retrying connect to AP SSID:%s (attempt %d/%d)", 
                              strlen(CONFIG_SSID) > 0 ? CONFIG_SSID : saved_ssid, 
                              wifi_retry_count, MAX_WIFI_RETRY);
+                    ESP_LOGI(__func__, "   → Waiting %d seconds before retry...", (wifi_retry_count * 2));
+                    
+                    // Delay tăng dần: 2s, 4s, 6s, 8s, 10s
+                    vTaskDelay((wifi_retry_count * 2000) / portTICK_PERIOD_MS);
                     esp_wifi_connect();
                 }
             } else {
@@ -859,10 +890,12 @@ static void WiFi_eventHandler( void *argument,  esp_event_base_t event_base, int
                             ESP_LOGW(TAG, "   → Cannot connect to %s:%d", dashboard_host_temp, dashboard_port_temp);
                             ESP_LOGW(TAG, "   → Please check:");
                             ESP_LOGW(TAG, "     1. Dashboard server is running on port %d", dashboard_port_temp);
-                            ESP_LOGW(TAG, "     2. IP address is correct (current: %s)", dashboard_host_temp);
+                            ESP_LOGW(TAG, "     2. Hostname/IP is correct (current: %s)", dashboard_host_temp);
+                            ESP_LOGW(TAG, "        → If using hostname, ensure DNS resolution works");
+                            ESP_LOGW(TAG, "        → If using IP, verify it's accessible");
                             ESP_LOGW(TAG, "     3. Server is accessible from ESP32 network");
                             ESP_LOGW(TAG, "     4. Firewall is not blocking port %d", dashboard_port_temp);
-                            ESP_LOGW(TAG, "     5. Update IP via: http://" IPSTR "/config", IP2STR(&event->ip_info.ip));
+                            ESP_LOGW(TAG, "     5. Update config via: http://" IPSTR "/config", IP2STR(&event->ip_info.ip));
                             ESP_LOGW(TAG, "   → Test from computer: curl http://%s:%d/api/esp32/register", 
                                     dashboard_host_temp, dashboard_port_temp);
                         } else {
@@ -887,14 +920,20 @@ static void WiFi_eventHandler( void *argument,  esp_event_base_t event_base, int
  * Note: Renamed to trigger_dashboard_registration_main to avoid conflict with wrapper in FileServer.c
  * Always defined to ensure linking works, even when CONFIG_DASHBOARD_ENABLED is disabled
  * This function will override the weak stub in FileServer.c
+ * Note: Function is called via wrapper in FileServer.c, so compiler may show unused warning (false positive)
  */
-void trigger_dashboard_registration_main(void)
+__attribute__((used)) void trigger_dashboard_registration_main(void)
 {
 #if CONFIG_DASHBOARD_ENABLED
-    // Load fresh config from NVS
+    // Small delay to ensure NVS is fully committed before reading
+    vTaskDelay(pdMS_TO_TICKS(200));
+    
+    // Load fresh config from NVS (force reload, don't use cached values)
     char dashboard_host_temp[64];
     int dashboard_port_temp;
     get_dashboard_config(dashboard_host_temp, sizeof(dashboard_host_temp), &dashboard_port_temp);
+    
+    ESP_LOGI(TAG, "📋 Loaded dashboard config for registration: %s:%d", dashboard_host_temp, dashboard_port_temp);
     
     // Get current ESP32 IP
     esp_netif_ip_info_t ip_info;
@@ -1148,6 +1187,7 @@ static void configure_static_ip_if_enabled(void)
 void WIFI_initSTA(void)
 {
     esp_netif_t *netif = esp_netif_create_default_wifi_sta();
+    (void)netif;  // Suppress unused variable warning - netif is created but not directly used
     
     // Cấu hình static IP nếu được bật (trước khi start WiFi)
     configure_static_ip_if_enabled();

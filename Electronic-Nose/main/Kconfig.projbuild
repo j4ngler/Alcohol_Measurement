@@ -202,11 +202,13 @@ menu "Dashboard Config"
             Enable sending sensor data to dashboard via HTTP POST (no SD card needed)
 
     config DASHBOARD_HOST
-        string "Dashboard host IP"
-        default "192.168.0.112"
+        string "Dashboard hostname or IP"
+        default "dashboard.local"
         depends on DASHBOARD_ENABLED
         help
-            Dashboard server IP address
+            Dashboard server hostname (e.g., "dashboard.local") or IP address (e.g., "192.168.1.100").
+            ESP32 will automatically resolve hostname to IP via DNS.
+            You can also configure this via web interface at http://<ESP32_IP>/config
 
     config DASHBOARD_PORT
         int "Dashboard port"
